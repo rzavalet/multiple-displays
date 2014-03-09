@@ -1,0 +1,73 @@
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res/com.distributedsystems.snake">
+
+  <com.distributedsystems.snake.BackgroundView
+    android:id="@+id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:colorSegmentOne="@color/muted_red"
+    app:colorSegmentTwo="@color/muted_yellow"
+    app:colorSegmentThree="@color/muted_blue"
+    app:colorSegmentFour="@color/muted_green"/>
+
+  <RelativeLayout android:id="@+id/settingsFieldsContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="visible">
+    
+    <TextView android:id="@+id/text_settings_user"
+	  	android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_gravity="center"
+	    android:gravity="center"
+	    android:textColor="@color/text_violet"
+	    android:textSize="24sp"
+	    android:padding="20dp"
+	    android:visibility="visible"
+	    android:text="@string/text_settings_user" />
+    <EditText android:id="@+id/edit_settings_user"
+	  	android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:layout_gravity="center"
+	    android:gravity="center"
+	    android:textColor="@color/text_violet"
+	    android:textSize="24sp"
+	    android:padding="20dp"
+	    android:visibility="visible" 
+	    android:layout_toRightOf="@+id/text_settings_user"
+	    android:hint="@string/edit_settings_user"/>
+
+    <TextView android:id="@+id/text_settings_IP"
+	  	android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_gravity="center"
+	    android:gravity="center"
+	    android:textColor="@color/text_violet"
+	    android:textSize="24sp"
+	    android:padding="20dp"
+	    android:visibility="visible"
+	    android:layout_below="@+id/text_settings_user"
+	    android:text="@string/text_settings_IP" />
+    <EditText android:id="@+id/edit_settings_IP"
+        android:text="@string/text_default_ip_tracker"
+	  	android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:layout_gravity="center"
+	    android:gravity="center"
+	    android:textColor="@color/text_violet"
+	    android:textSize="24sp"
+	    android:padding="20dp"
+	    android:visibility="visible" 
+	    android:layout_below="@+id/text_settings_user"
+	    android:layout_toRightOf="@+id/text_settings_IP"
+	    android:hint="@string/edit_settings_IP"/>
+    <Button 
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+       	android:layout_below="@+id/text_settings_IP"
+        android:text="@string/button_send"
+        android:onClick="setPreferences"
+        />
+  </RelativeLayout>
+</merge>
