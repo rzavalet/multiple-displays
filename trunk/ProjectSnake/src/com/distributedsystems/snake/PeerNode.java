@@ -12,6 +12,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
+import com.distributedsystems.snake.PeerConnection;
+import com.distributedsystems.snake.PeerInformation;
+import com.distributedsystems.snake.PeerMessage;
+
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.util.Log;
@@ -28,6 +32,7 @@ public class PeerNode {
 	public static final String MOVE_LEFT = "MOVL";
 	public static final String MOVE_UP = "MOVU";
 	public static final String MOVE_DOWN = "MOVD";
+	public static final String HELLO = "HELL";
 	
 	private PeerInformation myPeerInformation;
 	private HashMap<String, PeerInformation> fingerTable;
@@ -204,21 +209,26 @@ public class PeerNode {
 		
 		Debug.print("...Sending message to: " + remoteHost.getHost() + ":" + remoteHost.getPort(), debug);
 		
-		PeerConnection connection = new PeerConnection(remoteHost);
 		PeerMessage message = new PeerMessage(messageType, messageData);
-		connection.sendData(message);
-		
-		if (waitReply == true) {
-			Debug.print("...Receiving message from: " + remoteHost.getHost() + ":" + remoteHost.getPort(), debug);
-			reply = connection.receiveData();
-			while (reply != null) {
-				messages.add(reply);
+		try {
+			PeerConnection connection = new PeerConnection(remoteHost);
+			connection.sendData(message);
+			if (waitReply == true) {
+				Debug.print("...Receiving message from: " + remoteHost.getHost() + ":" + remoteHost.getPort(), debug);
 				reply = connection.receiveData();
-			}
+				while (reply != null) {
+					messages.add(reply);
+					reply = connection.receiveData();
+				}
 
+			}			
+			connection.close();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		
-		connection.close();
 		return messages;
 	}
 	
@@ -287,6 +297,38 @@ public class PeerNode {
 	    return ipAddressString;
 	}
 	
+	public void keepAlive() {
+		while (shutdown == false) {
+			List<String> deleteList = new ArrayList<String>();
+			for(String remotePeerId : getPeerKeys()) {
+				PeerInformation remotePeer = getPeer(remotePeerId);
+				PeerMessage message = new PeerMessage(HELLO, "");
+
+				try{
+					PeerConnection connection = new PeerConnection(remotePeer);
+					connection.sendData(message);
+					connection.close();
+				}
+				catch (IOException e){
+					deleteList.add(remotePeerId);
+				}
+				
+			}
+			
+			for (String peerId : deleteList) {
+				if (fingerTable.containsKey(peerId)) {
+					fingerTable.remove(peerId);
+				}
+			}
+			
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
 	public void connectionHandler() {
 		Debug.print("...Starting connection Handler", debug);
 		//Set the socket
@@ -314,14 +356,20 @@ public class PeerNode {
 
 						@Override
 						public void run() {
-							PeerConnection peerConnection = new PeerConnection(myPeerInformation, clientSocket);
-							PeerMessage message = peerConnection.receiveData();
-							Debug.print("Processing: " + message.getMessageType(), debug);
-							HandlerInterface handler = handlers.get(message.getMessageType());
-							if (handler != null){
-								handler.handleMessage(peerConnection, message);
+							PeerMessage message;
+							try {
+								PeerConnection peerConnection = new PeerConnection(myPeerInformation, clientSocket);
+								message = peerConnection.receiveData();
+								Debug.print("Processing: " + message.getMessageType(), debug);
+								HandlerInterface handler = handlers.get(message.getMessageType());
+								if (handler != null){
+									handler.handleMessage(peerConnection, message);
+								}
+								peerConnection.close();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
 							}
-							peerConnection.close();
 						}
 						
 					}.start();

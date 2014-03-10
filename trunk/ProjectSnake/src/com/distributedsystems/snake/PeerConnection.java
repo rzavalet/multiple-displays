@@ -1,5 +1,6 @@
 package com.distributedsystems.snake;
 
+import java.io.IOException;
 import java.net.Socket;
 
 public class PeerConnection {
@@ -28,7 +29,7 @@ public class PeerConnection {
 		return peerInformation;
 	}
 	
-	public PeerMessage receiveData() {
+	public PeerMessage receiveData() throws IOException {
 		byte[] marshalledMessage = null;
 		PeerMessage message = null;
 		
@@ -87,7 +88,7 @@ public class PeerConnection {
 	}
 	*/
 	
-	public void sendData(PeerMessage message) {
+	public void sendData(PeerMessage message) throws IOException {
 		byte[] marshalledMessage = new byte[256];
 		byte[] originalMessage;
 		

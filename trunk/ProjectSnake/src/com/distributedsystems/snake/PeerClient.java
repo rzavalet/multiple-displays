@@ -1,5 +1,7 @@
 package com.distributedsystems.snake;
 
+import java.io.IOException;
+
 import android.content.Context;
 
 public class PeerClient {
@@ -25,7 +27,12 @@ public class PeerClient {
 			Debug.print("... Replying with peer name: " + myId, debug);
 			
 			messageName = new PeerMessage(PeerNode.REPLY, myId);
-			connection.sendData(messageName);
+			try {
+				connection.sendData(messageName);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		
 	}
@@ -43,14 +50,18 @@ public class PeerClient {
 			Debug.print("Listing peers", debug);
 			
 			messageList = new PeerMessage(PeerNode.REPLY, String.valueOf(peer.getNumberOfPeers()));
-			connection.sendData(messageList);
-			
-			for (String currentPeerId : peer.getPeerKeys()) {
-				PeerInformation currentPeerInformation= peer.getPeer(currentPeerId);
-				messageList = new PeerMessage(PeerNode.REPLY, 
-						currentPeerInformation.getPeerId() + " " + currentPeerInformation.getHost() + 
-						" " + currentPeerInformation.getPort());
+			try {
 				connection.sendData(messageList);
+				for (String currentPeerId : peer.getPeerKeys()) {
+					PeerInformation currentPeerInformation= peer.getPeer(currentPeerId);
+					messageList = new PeerMessage(PeerNode.REPLY, 
+							currentPeerInformation.getPeerId() + " " + currentPeerInformation.getHost() + 
+							" " + currentPeerInformation.getPort());
+					connection.sendData(messageList);
+				}			
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 
 		}
@@ -77,7 +88,12 @@ public class PeerClient {
 			}
 						
 			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Peer added: " + peerId);
-			connection.sendData(replyMessage);
+			try {
+				connection.sendData(replyMessage);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
 		}
 		
