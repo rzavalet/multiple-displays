@@ -1,4 +1,4 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.middleware;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -12,9 +12,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
-import com.distributedsystems.snake.PeerConnection;
-import com.distributedsystems.snake.PeerInformation;
-import com.distributedsystems.snake.PeerMessage;
+import com.distributedsystems.middleware.PeerConnection;
+import com.distributedsystems.middleware.PeerInformation;
+import com.distributedsystems.middleware.PeerMessage;
+import com.distributedsystems.snake.HandlerInterface;
+import com.distributedsystems.utils.Debug;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;

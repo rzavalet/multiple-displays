@@ -1,6 +1,11 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.middleware;
 
 import java.io.IOException;
+
+import com.distributedsystems.snake.HandlerInterface;
+import com.distributedsystems.snake.Snake;
+import com.distributedsystems.snake.SnakeView;
+import com.distributedsystems.utils.Debug;
 
 import android.content.Context;
 

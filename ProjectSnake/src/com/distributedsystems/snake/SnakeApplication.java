@@ -1,5 +1,7 @@
 package com.distributedsystems.snake;
 
+import com.distributedsystems.middleware.PeerClient;
+
 import android.app.Application;
 
 public class SnakeApplication extends Application {

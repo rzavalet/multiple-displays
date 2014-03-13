@@ -1,4 +1,4 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.middleware;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -6,6 +6,9 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+
+import com.distributedsystems.snake.SocketInterface;
+import com.distributedsystems.utils.Debug;
 
 public class PeerSocket implements SocketInterface{
 

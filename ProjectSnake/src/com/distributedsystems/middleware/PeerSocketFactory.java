@@ -1,6 +1,8 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.middleware;
 
 import java.net.Socket;
+
+import com.distributedsystems.snake.SocketInterface;
 
 
 public class PeerSocketFactory {

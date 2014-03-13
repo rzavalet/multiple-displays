@@ -1,4 +1,4 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.utils;
 
 public class Debug {
 

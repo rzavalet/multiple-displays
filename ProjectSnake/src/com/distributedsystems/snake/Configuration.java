@@ -1,5 +1,7 @@
 package com.distributedsystems.snake;
 
+import com.distributedsystems.middleware.PeerClient;
+import com.distributedsystems.middleware.PeerInformation;
 import com.distributedsystems.snake.R;
 
 import android.app.Activity;

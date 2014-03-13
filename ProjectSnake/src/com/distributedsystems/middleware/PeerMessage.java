@@ -1,4 +1,4 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.middleware;
 
 public class PeerMessage {
 	private byte[] type;
