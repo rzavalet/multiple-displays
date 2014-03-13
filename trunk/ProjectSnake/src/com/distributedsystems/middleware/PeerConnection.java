@@ -1,7 +1,10 @@
-package com.distributedsystems.snake;
+package com.distributedsystems.middleware;
 
 import java.io.IOException;
 import java.net.Socket;
+
+import com.distributedsystems.snake.SocketInterface;
+import com.distributedsystems.utils.Debug;
 
 public class PeerConnection {
 
