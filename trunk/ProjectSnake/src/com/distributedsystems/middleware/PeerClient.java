@@ -2,7 +2,9 @@ package com.distributedsystems.middleware;
 
 import java.io.IOException;
 
+import com.distributedsystems.snake.Coordinate;
 import com.distributedsystems.snake.HandlerInterface;
+import com.distributedsystems.snake.Layout;
 import com.distributedsystems.snake.Snake;
 import com.distributedsystems.snake.SnakeView;
 import com.distributedsystems.utils.Debug;
@@ -12,6 +14,8 @@ import android.content.Context;
 public class PeerClient {
 
 	private PeerNode peerNode;
+
+
 	private SnakeView snakeView = null;
 	
 	private boolean shutdown = false;
@@ -32,6 +36,44 @@ public class PeerClient {
 			Debug.print("... Replying with peer name: " + myId, debug);
 			
 			messageName = new PeerMessage(PeerNode.REPLY, myId);
+			try {
+				connection.sendData(messageName);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	private class NewLeader implements HandlerInterface {
+		private PeerNode peer;
+		
+		public NewLeader(PeerNode peer) {
+			this.peer = peer;
+		}
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			PeerMessage messageName = null;
+			Debug.print("... Setting new leader: " + message.getMessageData(), debug);
+			peer.setLeaderId(message.getMessageData());
+		}
+		
+	}
+	
+	private class GetLeader implements HandlerInterface {
+		private PeerNode peer;
+		
+		public GetLeader(PeerNode peer) {
+			this.peer = peer;
+		}
+		
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			PeerMessage messageName = null;
+			Debug.print("... Replying with leader name: " + peer.getLeaderId(), debug);
+			
+			messageName = new PeerMessage(PeerNode.REPLY, peer.getLeaderId());
 			try {
 				connection.sendData(messageName);
 			} catch (IOException e) {
@@ -72,6 +114,89 @@ public class PeerClient {
 		}
 	}
 	
+	private class SendSnake implements HandlerInterface {
+		private SnakeView snake;
+		
+		public SendSnake(SnakeView snake) {
+			this.snake = snake;
+		}
+		
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			PeerMessage messageList = null;
+			Debug.print("Sending snake", debug);
+			
+			messageList = new PeerMessage(PeerNode.REPLY, String.valueOf(snake.getmSnakeTrail().size()));
+			
+			try {
+				connection.sendData(messageList);
+				for (Coordinate currentCoordinate : snake.getmSnakeTrail()) {
+					messageList = new PeerMessage(PeerNode.REPLY, 
+							currentCoordinate.x + " " + currentCoordinate.y);
+					connection.sendData(messageList);
+				}			
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+	}
+	
+	private class SendApples implements HandlerInterface {
+		private SnakeView snake;
+		
+		public SendApples(SnakeView snake) {
+			this.snake = snake;
+		}
+		
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			PeerMessage messageList = null;
+			Debug.print("Sending apples", debug);
+			
+			messageList = new PeerMessage(PeerNode.REPLY, String.valueOf(snake.getmAppleList().size()));
+			
+			try {
+				connection.sendData(messageList);
+				for (Coordinate currentCoordinate : snake.getmAppleList()) {
+					messageList = new PeerMessage(PeerNode.REPLY, 
+							currentCoordinate.x + " " + currentCoordinate.y);
+					connection.sendData(messageList);
+				}			
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+	}
+	
+	private class SendConfig implements HandlerInterface {
+		private SnakeView snake;
+		
+		public SendConfig(SnakeView snake) {
+			this.snake = snake;
+		}
+		
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			PeerMessage messageList = null;
+			Debug.print("Sending configuration", debug);
+			
+			messageList = new PeerMessage(PeerNode.REPLY, snake.getmMoveDelay() + " " + snake.getmNextDirection() + " " + snake.getmScore());
+			
+			try {
+				connection.sendData(messageList);		
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+	}
+	
+	
 	private class AddPeer implements HandlerInterface {
 		private PeerNode peer;
 		
@@ -102,6 +227,20 @@ public class PeerClient {
 
 		}
 		
+	}
+	
+	private class BlockGame implements HandlerInterface {
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			System.out.println("*** BLOCKING GAME");
+		}
+	}
+	
+	private class UnblockGame implements HandlerInterface {
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			System.out.println("*** UNBLOCKING GAME");
+		}
 	}
 	
 	private class StartGame implements HandlerInterface {
@@ -182,6 +321,27 @@ public class PeerClient {
 		
 		HandlerInterface moveDown = new MoveDown();
 		peerNode.addHandler(PeerNode.MOVE_DOWN, moveDown);		
+		
+		HandlerInterface getLeader = new GetLeader(peerNode);
+		peerNode.addHandler(PeerNode.GET_LEADER, getLeader);		
+		
+		HandlerInterface sendSnake = new SendSnake(snakeView);
+		peerNode.addHandler(PeerNode.GET_SNAKE, sendSnake);	
+		
+		HandlerInterface sendApples = new SendApples(snakeView);
+		peerNode.addHandler(PeerNode.GET_APPLES, sendApples);	
+		
+		HandlerInterface sendConfig = new SendConfig(snakeView);
+		peerNode.addHandler(PeerNode.GET_CONFIG, sendConfig);	
+		
+		HandlerInterface blockGame = new BlockGame();
+		peerNode.addHandler(PeerNode.BLOCK, blockGame);	
+		
+		HandlerInterface unblockGame = new UnblockGame();
+		peerNode.addHandler(PeerNode.UNBLOCK, unblockGame);	
+		
+		HandlerInterface newLeader = new NewLeader(peerNode);
+		peerNode.addHandler(PeerNode.NEW_LEADER, newLeader);	
 	}
 	
 	public boolean validateCommand(String[] command) {
@@ -246,8 +406,16 @@ public class PeerClient {
 		Debug.print("Starting new game...", debug);
 		peerNode.broadcastMessage(PeerNode.START_GAME, "");
 	}
-
-
+	
+	public void setLeader() {
+		Debug.print("Sending new leader...", debug);
+		peerNode.broadcastMessage(PeerNode.NEW_LEADER, peerNode.getPeerId());
+		
+	}
+	public PeerNode getPeerNode() {
+		return peerNode;
+	}
+	
 	public void setUpClient(Context context, SnakeView mSnakeView) {
 		peerNode.setMyContext(context);	
 		snakeView = mSnakeView;
@@ -263,6 +431,7 @@ public class PeerClient {
 			
 		}.start();
 	}
+
 	
 	/*
 	public static void main(String[] args) {
