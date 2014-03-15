@@ -150,4 +150,8 @@ public class Snake extends Activity {
         return super.onKeyDown(keyCode, msg);
     }
 
+	public SnakeView getmSnakeView() {
+		return mSnakeView;
+	}
+
 }

@@ -164,25 +164,50 @@ public class SnakeView extends TileView {
     private void initNewGame() {
         mSnakeTrail.clear();
         mAppleList.clear();
-
-        // For now we're just going to load up a short default eastbound snake
-        // that's just turned north
-
-        mSnakeTrail.add(new Coordinate(7, 7));
-        mSnakeTrail.add(new Coordinate(6, 7));
-        mSnakeTrail.add(new Coordinate(5, 7));
-        mSnakeTrail.add(new Coordinate(4, 7));
-        mSnakeTrail.add(new Coordinate(3, 7));
-        mSnakeTrail.add(new Coordinate(2, 7));
-        mNextDirection = NORTH;
-
-        // Two apples to start with
-        addRandomApple();
-        addRandomApple();
-
-        mMoveDelay = 600;
-        mScore = 0;
-		
+        
+        if (myClient.getPeerNode().getNumberOfPeers() > 0) {
+            /*
+             * At this point we should already know some peers.
+             * Steps to coordinate the game on startup is as follows:
+             * 
+             * 1) Ask the tracker who the leader is now
+             * 2) Block the leader and ask for the current layout
+             * 3) Unblock the leader
+             */
+        	String myLeader = myClient.getPeerNode().askForLeader();
+        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader);
+        	for (Coordinate coordinate : myLayout.snake) {
+        		mSnakeTrail.add(coordinate);
+        	}
+        	for (Coordinate coordinate : myLayout.apples) {
+        		mAppleList.add(coordinate);
+        	}
+        	
+        	mNextDirection = myLayout.mNextDirection;
+        	mMoveDelay = myLayout.mMoveDelay;
+        	mScore = myLayout.mScore;
+        	
+        }
+        else {
+	        // For now we're just going to load up a short default eastbound snake
+	        // that's just turned north
+	
+	        mSnakeTrail.add(new Coordinate(7, 7));
+	        mSnakeTrail.add(new Coordinate(6, 7));
+	        mSnakeTrail.add(new Coordinate(5, 7));
+	        mSnakeTrail.add(new Coordinate(4, 7));
+	        mSnakeTrail.add(new Coordinate(3, 7));
+	        mSnakeTrail.add(new Coordinate(2, 7));
+	        mNextDirection = NORTH;
+	
+	        // Two apples to start with
+	        addRandomApple();
+	        addRandomApple();
+	
+	        mMoveDelay = 600;
+	        mScore = 0;
+        }
+        
         myClient.startGame();
     }
 
@@ -267,6 +292,7 @@ public class SnakeView extends TileView {
      */
     public void moveSnake(int direction) {
 
+        myClient.setLeader();
         if (direction == Snake.MOVE_UP) {
             if (mMode == READY | mMode == LOSE) {
                 /*
@@ -553,30 +579,25 @@ public class SnakeView extends TileView {
 
     }
 
-    /**
-     * Simple class containing two integer values and a comparison function. There's probably
-     * something I should use instead, but this was quick and easy to build.
-     */
-    private class Coordinate {
-        public int x;
-        public int y;
+	public long getmMoveDelay() {
+		return mMoveDelay;
+	}
 
-        public Coordinate(int newX, int newY) {
-            x = newX;
-            y = newY;
-        }
+	public int getmNextDirection() {
+		return mNextDirection;
+	}
 
-        public boolean equals(Coordinate other) {
-            if (x == other.x && y == other.y) {
-                return true;
-            }
-            return false;
-        }
+	public long getmScore() {
+		return mScore;
+	}
 
-        @Override
-        public String toString() {
-            return "Coordinate: [" + x + "," + y + "]";
-        }
-    }
+	public ArrayList<Coordinate> getmSnakeTrail() {
+		return mSnakeTrail;
+	}
 
+	public ArrayList<Coordinate> getmAppleList() {
+		return mAppleList;
+	}
+
+    
 }
