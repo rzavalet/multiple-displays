@@ -317,7 +317,12 @@ public class PeerNode {
 			Debug.print("...Leader is " + leaderPeerId, debug);
 			return leaderPeerId;
 		}
+		else if (leaderPeerId.equals(myPeerInformation.getPeerId())) {
+			Debug.print("... I am the leader myself", debug);
+			return leaderPeerId;
+		}
 		else {
+			
 			Debug.print("I do not know this peer: " + leaderPeerId, debug);
 			return null;
 		}
