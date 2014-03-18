@@ -44,11 +44,11 @@ public class Configuration extends Activity {
 		PeerInformation tracker = null;
 		
 		if (!textIP.getText().toString().equals("")) {
-			tracker = new PeerInformation(null, textIP.getText().toString(), 8080);
+			tracker = new PeerInformation(null, textIP.getText().toString(), 8082);
 		}
 		
 		
-		PeerClient myClient = new PeerClient(textPeerID.getText().toString(), 8080, tracker, this);
+		PeerClient myClient = new PeerClient(textPeerID.getText().toString(), 8082, tracker, this);
 		myClient.startHandler();
 		context.setPeerClient(myClient);
 		
