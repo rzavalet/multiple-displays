@@ -13,6 +13,7 @@ import android.widget.EditText;
 
 public class Configuration extends Activity {
 	
+	private static final int PORT = 8080;
 	private EditText textPeerID;
 	private EditText textIP;
 
@@ -44,16 +45,15 @@ public class Configuration extends Activity {
 		PeerInformation tracker = null;
 		
 		if (!textIP.getText().toString().equals("")) {
-			tracker = new PeerInformation(null, textIP.getText().toString(), 8082);
+			tracker = new PeerInformation(null, textIP.getText().toString(), PORT);
 		}
 		
 		
-		PeerClient myClient = new PeerClient(textPeerID.getText().toString(), 8082, tracker, this);
+		PeerClient myClient = new PeerClient(textPeerID.getText().toString(), PORT, tracker, this);
 		myClient.startHandler();
 		context.setPeerClient(myClient);
 		
 	    Intent intent = new Intent(this, Snake.class);
 	    startActivity(intent);
-	}
-	
+	}	
 }

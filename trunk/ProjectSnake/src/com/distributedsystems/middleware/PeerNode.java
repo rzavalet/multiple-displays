@@ -90,7 +90,12 @@ public class PeerNode {
 		buildFingerTable(trackerPeerInformation, 5);
 		
 		//At the beginning we assume our tracker is the leader
-		this.leaderId = trackerPeerInformation.getPeerId();
+		if (trackerPeerInformation != null){
+			this.leaderId = trackerPeerInformation.getPeerId();
+		}
+		else {
+			this.leaderId = myId;
+		}
 	}
 	
 	private void buildFingerTable(PeerInformation trackerPeerInformation, int ttl){
