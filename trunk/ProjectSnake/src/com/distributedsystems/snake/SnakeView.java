@@ -165,7 +165,7 @@ public class SnakeView extends TileView {
         mSnakeTrail.clear();
         mAppleList.clear();
         
-        if (myClient.getPeerNode().getNumberOfPeers() > 0) {
+        if (myClient.getPeerNode().getNumberOfPeers() > 1) {
             /*
              * At this point we should already know some peers.
              * Steps to coordinate the game on startup is as follows:
@@ -175,18 +175,19 @@ public class SnakeView extends TileView {
              * 3) Unblock the leader
              */
         	String myLeader = myClient.getPeerNode().askForLeader();
-        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader);
-        	for (Coordinate coordinate : myLayout.snake) {
-        		mSnakeTrail.add(coordinate);
+        	if (myLeader != null && myLeader.equals(myClient.getPeerNode().getPeerId()) == false) {
+	        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader);
+	        	for (Coordinate coordinate : myLayout.snake) {
+	        		mSnakeTrail.add(coordinate);
+	        	}
+	        	for (Coordinate coordinate : myLayout.apples) {
+	        		mAppleList.add(coordinate);
+	        	}
+	        	
+	        	mNextDirection = myLayout.mNextDirection;
+	        	mMoveDelay = myLayout.mMoveDelay;
+	        	mScore = myLayout.mScore;
         	}
-        	for (Coordinate coordinate : myLayout.apples) {
-        		mAppleList.add(coordinate);
-        	}
-        	
-        	mNextDirection = myLayout.mNextDirection;
-        	mMoveDelay = myLayout.mMoveDelay;
-        	mScore = myLayout.mScore;
-        	
         }
         else {
 	        // For now we're just going to load up a short default eastbound snake
