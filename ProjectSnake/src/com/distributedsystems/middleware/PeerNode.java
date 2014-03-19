@@ -98,6 +98,28 @@ public class PeerNode {
 		}
 	}
 	
+	private String wifiIpAddress() {
+	    WifiManager wifiManager = (WifiManager) myContext.getSystemService(Context.WIFI_SERVICE);
+	    int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+
+	    // Convert little-endian to big-endianif needed
+	    if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
+	        ipAddress = Integer.reverseBytes(ipAddress);
+	    }
+
+	    byte[] ipByteArray = BigInteger.valueOf(ipAddress).toByteArray();
+
+	    String ipAddressString;
+	    try {
+	        ipAddressString = InetAddress.getByAddress(ipByteArray).getHostAddress();
+	    } catch (UnknownHostException ex) {
+	        Log.e("WIFIIP", "Unable to get host address.");
+	        ipAddressString = null;
+	    }
+
+	    return ipAddressString;
+	}
+	
 	private void buildFingerTable(PeerInformation trackerPeerInformation, int ttl){
 		List<PeerMessage> messages = null;
 		PeerMessage message = null;
@@ -182,7 +204,99 @@ public class PeerNode {
 		
 		Debug.print("*** FINISHED BUILDING TABLE ***", debug);
 	}
+
 	
+	public Context getMyContext() {
+		return myContext;
+	}
+
+	public void setMyContext(Context myContext) {
+		this.myContext = myContext;
+	}
+
+	public void setShutdown(boolean shutdown) {
+		this.shutdown = shutdown;
+	}
+	
+	public String getPeerId() {
+		return this.myPeerInformation.getPeerId();
+	}
+	
+	public String getLeaderId() {
+		return leaderId;
+	}
+
+	public void setLeaderId(String leaderId) {
+		this.leaderId = leaderId;
+	}
+
+	public String getHost() {
+		return this.myPeerInformation.getHost();
+	}
+	
+	public int getPort() {
+		return this.myPeerInformation.getPort();
+	}
+	
+	public HandlerInterface getHandler(String command) {
+		return this.handlers.get(command);
+	}
+	
+	public void addHandler(String msgType, HandlerInterface handler) {
+		this.handlers.put(msgType, handler);
+	}
+	
+	public PeerInformation getPeer(String peerId) {
+		return fingerTable.get(peerId);
+	}
+	
+	public Set<String> getPeerKeys() {
+		return fingerTable.keySet();
+	}
+	
+	public int getNumberOfPeers() {
+		return fingerTable.size();
+	}
+	
+	public PeerInformation getMyPeerInformation() {
+		return myPeerInformation;
+	}
+
+	public void insertPeer(PeerInformation peer) {
+		fingerTable.put(peer.getPeerId(), peer);
+	}
+
+	public void keepAlive() {
+		while (shutdown == false) {
+			List<String> deleteList = new ArrayList<String>();
+			for(String remotePeerId : getPeerKeys()) {
+				PeerInformation remotePeer = getPeer(remotePeerId);
+				PeerMessage message = new PeerMessage(HELLO, "");
+
+				try{
+					PeerConnection connection = new PeerConnection(remotePeer);
+					connection.sendData(message);
+					connection.close();
+				}
+				catch (IOException e){
+					deleteList.add(remotePeerId);
+				}
+				
+			}
+			
+			for (String peerId : deleteList) {
+				if (fingerTable.containsKey(peerId)) {
+					fingerTable.remove(peerId);
+				}
+			}
+			
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
 	public Layout askForLayout(String leaderPeerId) {
 		Layout layout = new Layout();
@@ -197,7 +311,21 @@ public class PeerNode {
 		
 		messages = null;
 		//Block the leader
-		messages = connectAndSend(leaderPeer, BLOCK, "", false);
+		messages = connectAndSend(leaderPeer, BLOCK, "", true);
+		if (messages == null) {
+			return null;
+		}
+		
+		if (messages.size() <= 0) {
+			return null;
+		}
+		
+		message = messages.get(0);
+		if (!message.getMessageType().equals(REPLY)) {
+			return null;
+		}
+		
+		Debug.print(message.getMessageData(), debug);
 		
 		//Obtain the snake coordinates
 		messages = connectAndSend(leaderPeer, GET_SNAKE, "", true);
@@ -264,7 +392,20 @@ public class PeerNode {
 		layout.mNextDirection = Integer.parseInt(fields[1]);
 		layout.mScore = Integer.parseInt(fields[2]);
 		
-		messages = connectAndSend(leaderPeer, UNBLOCK, "", false);
+		messages = connectAndSend(leaderPeer, UNBLOCK, "", true);
+		if (messages == null) {
+			return null;
+		}
+		
+		if (messages.size() <= 0) {
+			return null;
+		}
+		
+		message = messages.get(0);
+		if (!message.getMessageType().equals(REPLY)) {
+			return null;
+		}
+		Debug.print(message.getMessageData(), debug);
 		
 		Debug.print("*** FINISHED GETTING LAYOUT ***", debug);
 		return layout;
@@ -327,54 +468,34 @@ public class PeerNode {
 			return null;
 		}
 	}
-	
-	public Context getMyContext() {
-		return myContext;
-	}
-
-	public void setMyContext(Context myContext) {
-		this.myContext = myContext;
-	}
-
-	public void setShutdown(boolean shutdown) {
-		this.shutdown = shutdown;
-	}
-	
-	public String getPeerId() {
-		return this.myPeerInformation.getPeerId();
-	}
-	
-	public String getLeaderId() {
-		return leaderId;
-	}
-
-	public void setLeaderId(String leaderId) {
-		this.leaderId = leaderId;
-	}
-
-	public String getHost() {
-		return this.myPeerInformation.getHost();
-	}
-	
-	public int getPort() {
-		return this.myPeerInformation.getPort();
-	}
-	
-	public HandlerInterface getHandler(String command) {
-		return this.handlers.get(command);
-	}
-	
-	public void addHandler(String msgType, HandlerInterface handler) {
-		this.handlers.put(msgType, handler);
-	}
-	
-
 	public void broadcastMessage(String messageType,  String messageData) {
 		for(String remotePeerId : getPeerKeys()) {
 			connectAndSend(getPeer(remotePeerId), messageType, messageData, false);
 		}
 	}
 	
+	public PeerMessage sendToPeer(String remotePeerId, 
+			String messageType,  String messageData, boolean waitReply) {
+		
+		List<PeerMessage> receivedMessage = null;
+		PeerInformation remoteHost = null;
+		
+		remoteHost = fingerTable.get(remotePeerId);
+		if (remoteHost == null) {
+			return null;
+		}
+		
+		receivedMessage = connectAndSend(remoteHost, messageType, messageData, waitReply);
+		if (receivedMessage == null) {
+			return null;
+		}
+		
+		if (receivedMessage.isEmpty()) {
+			return null;
+		}
+		
+		return receivedMessage.get(0);
+	}
 	public List<PeerMessage> connectAndSend(PeerInformation remoteHost, 
 			String messageType,  String messageData, boolean waitReply) {
 		
@@ -405,103 +526,9 @@ public class PeerNode {
 		
 		return messages;
 	}
-	
-	public PeerMessage sendToPeer(String remotePeerId, 
-			String messageType,  String messageData, boolean waitReply) {
-		
-		List<PeerMessage> receivedMessage = null;
-		PeerInformation remoteHost = null;
-		
-		remoteHost = fingerTable.get(remotePeerId);
-		if (remoteHost == null) {
-			return null;
-		}
-		
-		receivedMessage = connectAndSend(remoteHost, messageType, messageData, waitReply);
-		if (receivedMessage == null) {
-			return null;
-		}
-		
-		if (receivedMessage.isEmpty()) {
-			return null;
-		}
-		
-		return receivedMessage.get(0);
-	}
-	
-	public PeerInformation getPeer(String peerId) {
-		return fingerTable.get(peerId);
-	}
-	
-	public Set<String> getPeerKeys() {
-		return fingerTable.keySet();
-	}
-	
-	public int getNumberOfPeers() {
-		return fingerTable.size();
-	}
-	
-	public PeerInformation getMyPeerInformation() {
-		return myPeerInformation;
-	}
 
-	public void insertPeer(PeerInformation peer) {
-		fingerTable.put(peer.getPeerId(), peer);
-	}
 	
-	private String wifiIpAddress() {
-	    WifiManager wifiManager = (WifiManager) myContext.getSystemService(Context.WIFI_SERVICE);
-	    int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
 
-	    // Convert little-endian to big-endianif needed
-	    if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
-	        ipAddress = Integer.reverseBytes(ipAddress);
-	    }
-
-	    byte[] ipByteArray = BigInteger.valueOf(ipAddress).toByteArray();
-
-	    String ipAddressString;
-	    try {
-	        ipAddressString = InetAddress.getByAddress(ipByteArray).getHostAddress();
-	    } catch (UnknownHostException ex) {
-	        Log.e("WIFIIP", "Unable to get host address.");
-	        ipAddressString = null;
-	    }
-
-	    return ipAddressString;
-	}
-	
-	public void keepAlive() {
-		while (shutdown == false) {
-			List<String> deleteList = new ArrayList<String>();
-			for(String remotePeerId : getPeerKeys()) {
-				PeerInformation remotePeer = getPeer(remotePeerId);
-				PeerMessage message = new PeerMessage(HELLO, "");
-
-				try{
-					PeerConnection connection = new PeerConnection(remotePeer);
-					connection.sendData(message);
-					connection.close();
-				}
-				catch (IOException e){
-					deleteList.add(remotePeerId);
-				}
-				
-			}
-			
-			for (String peerId : deleteList) {
-				if (fingerTable.containsKey(peerId)) {
-					fingerTable.remove(peerId);
-				}
-			}
-			
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-	}
 
 	public void connectionHandler() {
 		Debug.print("...Starting connection Handler", debug);
@@ -516,7 +543,7 @@ public class PeerNode {
 			}
 			
 			if (serverSocket == null) {
-				System.out.println("ERROR: could not create server socket...");
+				Debug.print("ERROR: could not create server socket...", debug);
 				return;
 			}
 			

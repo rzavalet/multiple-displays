@@ -46,12 +46,11 @@ public class Snake extends Activity {
     public static int MOVE_DOWN = 2;
     public static int MOVE_RIGHT = 3;
 
-    PeerClient myClient = null;
-    
     private static String ICICLE_KEY = "snake-view";
 
     private SnakeView mSnakeView;
 
+    
     /**
      * Called when Activity is first created. Turns off the title bar, sets up the content views,
      * and fires up the SnakeView.
@@ -106,9 +105,14 @@ public class Snake extends Activity {
         });
         
         final SnakeApplication context = (SnakeApplication)this.getApplication();
-        myClient = context.getPeerClient();
-        myClient.setUpClient(this, mSnakeView);
+		PeerClient myClient = new PeerClient(context.getMyId(), context.getMyPort(), context.getTracker(), mSnakeView, this);
+		myClient.startHandler();
+      
+		/*This should be corrected*/
         mSnakeView.setMyClient(myClient);
+        
+        TextView myInfo = (TextView) findViewById(R.id.txt_info);
+        myInfo.setText(myClient.getPeerNode().getMyPeerInformation().toString());
     }
 
     @Override
@@ -116,6 +120,7 @@ public class Snake extends Activity {
         super.onPause();
         // Pause the game along with the activity
         mSnakeView.setMode(SnakeView.PAUSE);
+        //myClient.setShutdown(true);
     }
 
     @Override
