@@ -173,11 +173,10 @@ public class PeerSocket implements SocketInterface{
 			@Override
 			public void run() {
 				InputStream in = null;
-				int size = -1;
 				try {
 					in = socket.getInputStream();
-					size = in.read(dataInThread);
-					Debug.print("...Received bytes: " + new String(dataInThread), debug);
+					int size = in.read(dataInThread);
+					Debug.print("...Received bytes: " + size + " -- "  + new String(dataInThread), debug);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

@@ -31,6 +31,7 @@ import java.util.Random;
 
 import com.distributedsystems.middleware.PeerClient;
 import com.distributedsystems.snake.R;
+import com.distributedsystems.utils.Debug;
 
 /**
  * SnakeView: implementation of a simple game of Snake
@@ -38,45 +39,34 @@ import com.distributedsystems.snake.R;
 public class SnakeView extends TileView {
 
     private static final String TAG = "SnakeView";
-
-    /**
-     * Current mode of application: READY to run, RUNNING, or you have already lost. static final
-     * ints are used instead of an enum for performance reasons.
-     */
-    private int mMode = READY;
+    
     public static final int PAUSE = 0;
     public static final int READY = 1;
     public static final int RUNNING = 2;
     public static final int LOSE = 3;
-
-    /**
-     * Current direction the snake is headed.
-     */
-    private int mDirection = NORTH;
-    private int mNextDirection = NORTH;
+    
     private static final int NORTH = 1;
     private static final int SOUTH = 2;
     private static final int EAST = 3;
     private static final int WEST = 4;
-
+    
     /**
      * Labels for the drawables that will be loaded into the TileView class
      */
     private static final int RED_STAR = 1;
     private static final int YELLOW_STAR = 2;
     private static final int GREEN_STAR = 3;
-
+    
     /**
-     * myClient: This represents the application as a P2P client
+     * Everyone needs a little randomness in their life
      */
-    private PeerClient myClient = null;
-
+    private static final Random RNG = new Random();
+    
     /**
-     * mScore: Used to track the number of apples captured mMoveDelay: number of milliseconds
-     * between snake movements. This will decrease as apples are captured.
+     * Current mode of application: READY to run, RUNNING, or you have already lost.
      */
-    private long mScore = 0;
-    private long mMoveDelay = 600;
+    private int mMode = READY;
+
     /**
      * mLastMove: Tracks the absolute time when the snake last moved, and is used to determine if a
      * move should be made based on mMoveDelay.
@@ -100,6 +90,28 @@ public class SnakeView extends TileView {
     private View mBackgroundView;
 
     /**
+     * Create a simple handler that we can use to cause animation to happen. We set ourselves as a
+     * target and we can use the sleep() function to cause an update/invalidate to occur at a later
+     * date.
+     */
+    private RefreshHandler mRedrawHandler = new RefreshHandler();
+    
+
+    /**
+     * Current direction the snake is headed.
+     */
+    private int mDirection = NORTH;
+    
+    private int mNextDirection = NORTH;
+    
+    /**
+     * mScore: Used to track the number of apples captured mMoveDelay: number of milliseconds
+     * between snake movements. This will decrease as apples are captured.
+     */
+    private long mScore = 0;
+    private long mMoveDelay = 600;
+
+    /**
      * mSnakeTrail: A list of Coordinates that make up the snake's body mAppleList: The secret
      * location of the juicy apples the snake craves.
      */
@@ -107,17 +119,12 @@ public class SnakeView extends TileView {
     private ArrayList<Coordinate> mAppleList = new ArrayList<Coordinate>();
 
     /**
-     * Everyone needs a little randomness in their life
+     * myClient: This represents the application as a P2P client
      */
-    private static final Random RNG = new Random();
-
-    /**
-     * Create a simple handler that we can use to cause animation to happen. We set ourselves as a
-     * target and we can use the sleep() function to cause an update/invalidate to occur at a later
-     * date.
-     */
-    private RefreshHandler mRedrawHandler = new RefreshHandler();
-
+    private PeerClient myClient = null;
+    
+    private static final boolean debug = true;
+    
 	class RefreshHandler extends Handler {
 
         @Override
@@ -148,205 +155,15 @@ public class SnakeView extends TileView {
         initSnakeView(context);
     }
 
-    private void initSnakeView(Context context) {
-
-        setFocusable(true);
-
-        Resources r = this.getContext().getResources();
-
-        resetTiles(4);
-        loadTile(RED_STAR, r.getDrawable(R.drawable.redstar));
-        loadTile(YELLOW_STAR, r.getDrawable(R.drawable.yellowstar));
-        loadTile(GREEN_STAR, r.getDrawable(R.drawable.greenstar));
-
-    }
-
-    private void initNewGame() {
-        mSnakeTrail.clear();
-        mAppleList.clear();
-        
-        if (myClient.getPeerNode().getNumberOfPeers() > 1) {
-            /*
-             * At this point we should already know some peers.
-             * Steps to coordinate the game on startup is as follows:
-             * 
-             * 1) Ask the tracker who the leader is now
-             * 2) Block the leader and ask for the current layout
-             * 3) Unblock the leader
-             */
-        	String myLeader = myClient.getPeerNode().askForLeader();
-        	if (myLeader != null && myLeader.equals(myClient.getPeerNode().getPeerId()) == false) {
-	        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader);
-	        	for (Coordinate coordinate : myLayout.snake) {
-	        		mSnakeTrail.add(coordinate);
-	        	}
-	        	for (Coordinate coordinate : myLayout.apples) {
-	        		mAppleList.add(coordinate);
-	        	}
-	        	
-	        	mNextDirection = myLayout.mNextDirection;
-	        	mMoveDelay = myLayout.mMoveDelay;
-	        	mScore = myLayout.mScore;
-        	}
-        }
-        else {
-	        // For now we're just going to load up a short default eastbound snake
-	        // that's just turned north
-	
-	        mSnakeTrail.add(new Coordinate(7, 7));
-	        mSnakeTrail.add(new Coordinate(6, 7));
-	        mSnakeTrail.add(new Coordinate(5, 7));
-	        mSnakeTrail.add(new Coordinate(4, 7));
-	        mSnakeTrail.add(new Coordinate(3, 7));
-	        mSnakeTrail.add(new Coordinate(2, 7));
-	        mNextDirection = NORTH;
-	
-	        // Two apples to start with
-	        addRandomApple();
-	        addRandomApple();
-	
-	        mMoveDelay = 600;
-	        mScore = 0;
-        }
-        
-        myClient.startGame();
-    }
-
-    /**
-     * Given a ArrayList of coordinates, we need to flatten them into an array of ints before we can
-     * stuff them into a map for flattening and storage.
-     * 
-     * @param cvec : a ArrayList of Coordinate objects
-     * @return : a simple array containing the x/y values of the coordinates as
-     *         [x1,y1,x2,y2,x3,y3...]
-     */
-    private int[] coordArrayListToArray(ArrayList<Coordinate> cvec) {
-        int[] rawArray = new int[cvec.size() * 2];
-
-        int i = 0;
-        for (Coordinate c : cvec) {
-            rawArray[i++] = c.x;
-            rawArray[i++] = c.y;
-        }
-
-        return rawArray;
-    }
-
-    /**
-     * Save game state so that the user does not lose anything if the game process is killed while
-     * we are in the background.
-     * 
-     * @return a Bundle with this view's state
-     */
-    public Bundle saveState() {
-        Bundle map = new Bundle();
-
-        map.putIntArray("mAppleList", coordArrayListToArray(mAppleList));
-        map.putInt("mDirection", Integer.valueOf(mDirection));
-        map.putInt("mNextDirection", Integer.valueOf(mNextDirection));
-        map.putLong("mMoveDelay", Long.valueOf(mMoveDelay));
-        map.putLong("mScore", Long.valueOf(mScore));
-        map.putIntArray("mSnakeTrail", coordArrayListToArray(mSnakeTrail));
-
-        return map;
-    }
-
-    /**
-     * Given a flattened array of ordinate pairs, we reconstitute them into a ArrayList of
-     * Coordinate objects
-     * 
-     * @param rawArray : [x1,y1,x2,y2,...]
-     * @return a ArrayList of Coordinates
-     */
-    private ArrayList<Coordinate> coordArrayToArrayList(int[] rawArray) {
-        ArrayList<Coordinate> coordArrayList = new ArrayList<Coordinate>();
-
-        int coordCount = rawArray.length;
-        for (int index = 0; index < coordCount; index += 2) {
-            Coordinate c = new Coordinate(rawArray[index], rawArray[index + 1]);
-            coordArrayList.add(c);
-        }
-        return coordArrayList;
-    }
-
-    /**
-     * Restore game state if our process is being relaunched
-     * 
-     * @param icicle a Bundle containing the game state
-     */
-    public void restoreState(Bundle icicle) {
-        setMode(PAUSE);
-
-        mAppleList = coordArrayToArrayList(icicle.getIntArray("mAppleList"));
-        mDirection = icicle.getInt("mDirection");
-        mNextDirection = icicle.getInt("mNextDirection");
-        mMoveDelay = icicle.getLong("mMoveDelay");
-        mScore = icicle.getLong("mScore");
-        mSnakeTrail = coordArrayToArrayList(icicle.getIntArray("mSnakeTrail"));
-    }
-
-    /**
-     * Handles snake movement triggers from Snake Activity and moves the snake accordingly. Ignore
-     * events that would cause the snake to immediately turn back on itself.
-     *
-     * @param direction The desired direction of movement
-     */
-    public void moveSnake(int direction) {
-
-        myClient.setLeader();
-        if (direction == Snake.MOVE_UP) {
-            if (mMode == READY | mMode == LOSE) {
-                /*
-                 * At the beginning of the game, or the end of a previous one,
-                 * we should start a new game if UP key is clicked.
-                 */
-                initNewGame();
-                setMode(RUNNING);
-                update();
-                return;
-            }
-
-            if (mMode == PAUSE) {
-                /*
-                 * If the game is merely paused, we should just continue where we left off.
-                 */
-                setMode(RUNNING);
-                update();
-                return;
-            }
-
-            if (mDirection != SOUTH) {
-                mNextDirection = NORTH;
-            }
-            myClient.moveUp();
-            return;
-        }
-
-        if (direction == Snake.MOVE_DOWN) {
-            if (mDirection != NORTH) {
-                mNextDirection = SOUTH;
-            }
-            myClient.moveDown();
-            return;
-        }
-
-        if (direction == Snake.MOVE_LEFT) {
-            if (mDirection != EAST) {
-                mNextDirection = WEST;
-            }
-            myClient.moveLeft();
-            return;
-        }
-
-        if (direction == Snake.MOVE_RIGHT) {
-            if (mDirection != WEST) {
-                mNextDirection = EAST;
-            }
-            myClient.moveRight();
-            return;
-        }
-
-    }
+    public void setmNextDirection(int mNextDirection) {
+		this.mNextDirection = mNextDirection;
+	}
+	public void setmScore(long mScore) {
+		this.mScore = mScore;
+	}
+	public void setmMoveDelay(long mMoveDelay) {
+		this.mMoveDelay = mMoveDelay;
+	}
 
     public PeerClient getMyClient() {
  		return myClient;
@@ -417,7 +234,244 @@ public class SnakeView extends TileView {
     public int getGameState() {
         return mMode;
     }
+    
+	public long getmMoveDelay() {
+		return mMoveDelay;
+	}
 
+	public int getmNextDirection() {
+		return mNextDirection;
+	}
+
+	public long getmScore() {
+		return mScore;
+	}
+
+	public ArrayList<Coordinate> getmSnakeTrail() {
+		return mSnakeTrail;
+	}
+
+	public ArrayList<Coordinate> getmAppleList() {
+		return mAppleList;
+	}
+
+
+    /**
+     * Save game state so that the user does not lose anything if the game process is killed while
+     * we are in the background.
+     * 
+     * @return a Bundle with this view's state
+     */
+    public Bundle saveState() {
+        Bundle map = new Bundle();
+
+        map.putIntArray("mAppleList", coordArrayListToArray(mAppleList));
+        map.putInt("mDirection", Integer.valueOf(mDirection));
+        map.putInt("mNextDirection", Integer.valueOf(mNextDirection));
+        map.putLong("mMoveDelay", Long.valueOf(mMoveDelay));
+        map.putLong("mScore", Long.valueOf(mScore));
+        map.putIntArray("mSnakeTrail", coordArrayListToArray(mSnakeTrail));
+
+        return map;
+    }
+
+    /**
+     * Restore game state if our process is being relaunched
+     * 
+     * @param icicle a Bundle containing the game state
+     */
+    public void restoreState(Bundle icicle) {
+        setMode(PAUSE);
+
+        mAppleList = coordArrayToArrayList(icicle.getIntArray("mAppleList"));
+        mDirection = icicle.getInt("mDirection");
+        mNextDirection = icicle.getInt("mNextDirection");
+        mMoveDelay = icicle.getLong("mMoveDelay");
+        mScore = icicle.getLong("mScore");
+        mSnakeTrail = coordArrayToArrayList(icicle.getIntArray("mSnakeTrail"));
+    }
+    
+    public void blockSnake() {
+    	mMode = PAUSE;
+    	update();
+    }
+    
+    public void unblockSnake() {
+    	mMode = RUNNING;
+    	update();
+    }
+    
+    /**
+     * Handles snake movement triggers from Snake Activity and moves the snake accordingly. Ignore
+     * events that would cause the snake to immediately turn back on itself.
+     *
+     * @param direction The desired direction of movement
+     */
+    public void moveSnake(int direction) {
+
+    	if (mMode == RUNNING) {
+    		myClient.setLeader();
+    	}
+    	
+        if (direction == Snake.MOVE_UP) {
+            if (mMode == READY | mMode == LOSE) {
+                /*
+                 * At the beginning of the game, or the end of a previous one,
+                 * we should start a new game if UP key is clicked.
+                 */
+                initNewGame();
+                setMode(RUNNING);
+                update();
+                return;
+            }
+
+            if (mMode == PAUSE) {
+                /*
+                 * If the game is merely paused, we should just continue where we left off.
+                 */
+                setMode(RUNNING);
+                update();
+                return;
+            }
+
+            if (mDirection != SOUTH) {
+                mNextDirection = NORTH;
+            }
+            myClient.moveUp();
+            return;
+        }
+
+        if (direction == Snake.MOVE_DOWN) {
+            if (mDirection != NORTH) {
+                mNextDirection = SOUTH;
+            }
+            myClient.moveDown();
+            return;
+        }
+
+        if (direction == Snake.MOVE_LEFT) {
+            if (mDirection != EAST) {
+                mNextDirection = WEST;
+            }
+            myClient.moveLeft();
+            return;
+        }
+
+        if (direction == Snake.MOVE_RIGHT) {
+            if (mDirection != WEST) {
+                mNextDirection = EAST;
+            }
+            myClient.moveRight();
+            return;
+        }
+
+    }
+
+
+    /**
+     * Handles the basic update loop, checking to see if we are in the running state, determining if
+     * a move should be made, updating the snake's location.
+     */
+    public void update() {
+        if (mMode == RUNNING) {
+            long now = System.currentTimeMillis();
+
+            if (now - mLastMove > mMoveDelay) {
+                clearTiles();
+                updateWalls();
+                updateSnake();
+                updateApples();
+                mLastMove = now;
+            }
+            mRedrawHandler.sleep(mMoveDelay);
+        }
+
+    }
+    
+	private void printGame() {
+		Debug.print("Printing Snake", debug);
+		for (Coordinate currentCoord : mSnakeTrail) {
+			Debug.print(currentCoord.toString(), debug);
+		}
+		
+		Debug.print("Printing Apples", debug);
+		for (Coordinate currentCoord : mAppleList) {
+			Debug.print(currentCoord.toString(), debug);
+		}
+		
+		Debug.print("Direction: " + mNextDirection, debug);
+		Debug.print("Delay: " + mMoveDelay, debug);
+		Debug.print("Score: " + mScore, debug);
+	}
+	
+    private void initSnakeView(Context context) {
+
+        setFocusable(true);
+
+        Resources r = this.getContext().getResources();
+
+        resetTiles(4);
+        loadTile(RED_STAR, r.getDrawable(R.drawable.redstar));
+        loadTile(YELLOW_STAR, r.getDrawable(R.drawable.yellowstar));
+        loadTile(GREEN_STAR, r.getDrawable(R.drawable.greenstar));
+    }
+
+    private void initNewGame() {
+        mSnakeTrail.clear();
+        mAppleList.clear();
+        
+        if (myClient.getPeerNode().getNumberOfPeers() > 0) {
+            /*
+             * At this point we should already know some peers.
+             * Steps to coordinate the game on startup is as follows:
+             * 
+             * 1) Ask the tracker who the leader is now
+             * 2) Block the leader and ask for the current layout
+             * 3) Unblock the leader
+             */
+        	Debug.print("Obtaining game from peer", debug);
+        	String myLeader = myClient.getPeerNode().askForLeader();
+        	if (myLeader != null && myLeader.equals(myClient.getPeerNode().getPeerId()) == false) {
+	        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader);
+	        	for (Coordinate coordinate : myLayout.snake) {
+	        		mSnakeTrail.add(coordinate);
+	        	}
+	        	for (Coordinate coordinate : myLayout.apples) {
+	        		mAppleList.add(coordinate);
+	        	}
+	        	
+	        	mNextDirection = myLayout.mNextDirection;
+	        	mMoveDelay = myLayout.mMoveDelay;
+	        	mScore = myLayout.mScore;
+        	}
+        }
+        else {
+	        // For now we're just going to load up a short default eastbound snake
+	        // that's just turned north
+        	Debug.print("Creating new game", debug);
+        	
+	        mSnakeTrail.add(new Coordinate(7, 7));
+	        mSnakeTrail.add(new Coordinate(6, 7));
+	        mSnakeTrail.add(new Coordinate(5, 7));
+	        mSnakeTrail.add(new Coordinate(4, 7));
+	        mSnakeTrail.add(new Coordinate(3, 7));
+	        mSnakeTrail.add(new Coordinate(2, 7));
+	        mNextDirection = NORTH;
+	
+	        // Two apples to start with
+	        addRandomApple();
+	        addRandomApple();
+	
+	        mMoveDelay = 600;
+	        mScore = 0;
+        }
+        
+        printGame();
+        myClient.startGame();
+    }
+
+
+ 
     /**
      * Selects a random location within the garden that is not currently covered by the snake.
      * Currently _could_ go into an infinite loop if the snake currently fills the garden, but we'll
@@ -451,25 +505,6 @@ public class SnakeView extends TileView {
         mAppleList.add(newCoord);
     }
 
-    /**
-     * Handles the basic update loop, checking to see if we are in the running state, determining if
-     * a move should be made, updating the snake's location.
-     */
-    public void update() {
-        if (mMode == RUNNING) {
-            long now = System.currentTimeMillis();
-
-            if (now - mLastMove > mMoveDelay) {
-                clearTiles();
-                updateWalls();
-                updateSnake();
-                updateApples();
-                mLastMove = now;
-            }
-            mRedrawHandler.sleep(mMoveDelay);
-        }
-
-    }
 
     /**
      * Draws some walls.
@@ -579,26 +614,44 @@ public class SnakeView extends TileView {
         }
 
     }
+	
+    /**
+     * Given a ArrayList of coordinates, we need to flatten them into an array of ints before we can
+     * stuff them into a map for flattening and storage.
+     * 
+     * @param cvec : a ArrayList of Coordinate objects
+     * @return : a simple array containing the x/y values of the coordinates as
+     *         [x1,y1,x2,y2,x3,y3...]
+     */
+    private int[] coordArrayListToArray(ArrayList<Coordinate> cvec) {
+        int[] rawArray = new int[cvec.size() * 2];
 
-	public long getmMoveDelay() {
-		return mMoveDelay;
-	}
+        int i = 0;
+        for (Coordinate c : cvec) {
+            rawArray[i++] = c.x;
+            rawArray[i++] = c.y;
+        }
 
-	public int getmNextDirection() {
-		return mNextDirection;
-	}
+        return rawArray;
+    }
 
-	public long getmScore() {
-		return mScore;
-	}
+    /**
+     * Given a flattened array of ordinate pairs, we reconstitute them into a ArrayList of
+     * Coordinate objects
+     * 
+     * @param rawArray : [x1,y1,x2,y2,...]
+     * @return a ArrayList of Coordinates
+     */
+    private ArrayList<Coordinate> coordArrayToArrayList(int[] rawArray) {
+        ArrayList<Coordinate> coordArrayList = new ArrayList<Coordinate>();
 
-	public ArrayList<Coordinate> getmSnakeTrail() {
-		return mSnakeTrail;
-	}
+        int coordCount = rawArray.length;
+        for (int index = 0; index < coordCount; index += 2) {
+            Coordinate c = new Coordinate(rawArray[index], rawArray[index + 1]);
+            coordArrayList.add(c);
+        }
+        return coordArrayList;
+    }
 
-	public ArrayList<Coordinate> getmAppleList() {
-		return mAppleList;
-	}
 
-    
 }
