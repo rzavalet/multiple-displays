@@ -10,7 +10,7 @@ public class PeerConnection {
 
 	private PeerInformation peerInformation;
 	private SocketInterface socket;
-	private final boolean debug = true;
+	private final boolean debug = false;
 	
 	public PeerConnection(PeerInformation peerInformation) {
 		//Set the peer information

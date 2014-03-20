@@ -49,6 +49,7 @@ public class Snake extends Activity {
 
     private static String ICICLE_KEY = "snake-view";
     private static final boolean debug = true;
+
     
     private SnakeView mSnakeView;
     private BackgroundView backgroundView;
@@ -115,7 +116,13 @@ public class Snake extends Activity {
 		
 		/*This should be corrected*/
         mSnakeView.setMyClient(myClient);
-        
+        mSnakeView.setTypeOfGame(context.getTypeOfGame());
+        if (context.getTracker() == null) {
+        	mSnakeView.setTypeOfNode(false);
+        }
+        else {
+        	mSnakeView.setTypeOfNode(true);
+        }
         TextView myInfo = (TextView) findViewById(R.id.txt_info);
         myInfo.setText(myClient.getPeerNode().getMyPeerInformation().toString());
     }

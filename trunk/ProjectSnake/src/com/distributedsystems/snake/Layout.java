@@ -15,6 +15,8 @@ public class Layout {
     public int width;
     public int height;
     
+    public int typeOfGame;
+    
     public Layout() {
     	snake = new ArrayList<Coordinate>();
     	apples = new ArrayList<Coordinate>();
@@ -23,5 +25,6 @@ public class Layout {
     	mNextDirection = -1;
     	width = -1;
     	height = -1;
+    	typeOfGame = 0;
     }
 }

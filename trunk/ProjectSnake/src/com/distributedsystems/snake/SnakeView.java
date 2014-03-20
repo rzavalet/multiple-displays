@@ -123,8 +123,12 @@ public class SnakeView extends TileView {
      */
     private PeerClient myClient = null;
     private boolean started = false;
+    private int typeOfGame = 0;
+    
+	public boolean needResync = false;
     
     private static final boolean debug = true;
+    private boolean typeOfNode = false;
     
 	class RefreshHandler extends Handler {
 
@@ -136,10 +140,18 @@ public class SnakeView extends TileView {
         			SnakeView.this.myClient.amILeader() == true &&
         			SnakeView.this.mMode == RUNNING) 
         	{
-        		SnakeView.this.update();
-        		SnakeView.this.invalidate();
+        		//Debug.print("Moving automagically", debug);
         		
         		SnakeView.this.myClient.advance();
+        		
+        		SnakeView.this.update();
+        		if (SnakeView.this.needResync ) {
+        			SnakeView.this.myClient.resync();
+        			SnakeView.this.needResync = false;
+        		}
+        		
+        		SnakeView.this.invalidate();
+    
         	}
         }
 
@@ -173,6 +185,26 @@ public class SnakeView extends TileView {
 
     public boolean isStarted() {
 		return started;
+	}
+
+	public boolean isTypeOfNode() {
+		return typeOfNode;
+	}
+
+	public void setTypeOfNode(boolean typeOfNode) {
+		this.typeOfNode = typeOfNode;
+	}
+
+	public int getTypeOfGame() {
+		return typeOfGame;
+	}
+
+	public void setTypeOfGame(int typeOfGame) {
+		this.typeOfGame = typeOfGame;
+	}
+
+	public int getmMode() {
+		return mMode;
 	}
 
 	public void setStarted(boolean started) {
@@ -235,6 +267,7 @@ public class SnakeView extends TileView {
             mArrowsView.setVisibility(View.GONE);
             mBackgroundView.setVisibility(View.GONE);
             str = res.getText(R.string.mode_pause);
+            myClient.stopTimer();
         }
         if (newMode == READY) {
             mArrowsView.setVisibility(View.GONE);
@@ -247,6 +280,7 @@ public class SnakeView extends TileView {
             mBackgroundView.setVisibility(View.GONE);
             str = res.getString(R.string.mode_lose, mScore);
             started = false;
+            myClient.stopTimer();
             Debug.print("You loose", debug);
         }
 
@@ -335,9 +369,13 @@ public class SnakeView extends TileView {
      */
     public void moveSnake(int direction, boolean remote) {
 
-    	if (mMode == RUNNING && remote == false) {
+    	boolean newLeader = false;
+    	
+    	if (mMode == RUNNING && remote == false && myClient.amILeader() == false) {
     		myClient.setLeader();
+    		newLeader = true;
     	}
+
     	
         if (direction == Snake.MOVE_UP) {
             if (mMode == READY | mMode == LOSE) {
@@ -375,6 +413,9 @@ public class SnakeView extends TileView {
             
             if (remote == false) {
             	myClient.moveUp();
+            	if (newLeader)
+            		update();
+            	myClient.resync();
             }
             return;
         }
@@ -385,6 +426,9 @@ public class SnakeView extends TileView {
             }
             if (remote == false) {
             	myClient.moveDown();
+            	if (newLeader)
+            		update();
+            	myClient.resync();
             }
             return;
         }
@@ -395,6 +439,9 @@ public class SnakeView extends TileView {
             }
             if (remote == false) {
             	myClient.moveLeft();
+            	if (newLeader)
+            		update();
+            	myClient.resync();
             }
             return;
         }
@@ -405,6 +452,9 @@ public class SnakeView extends TileView {
             }
             if (remote == false) {
             	myClient.moveRight();
+            	if (newLeader)
+            		update();
+            	myClient.resync();
             }
             return;
         }
@@ -413,7 +463,7 @@ public class SnakeView extends TileView {
 
 
 	public void advance() {
-		updateNow();
+		updateNow(true);
 		invalidate();
 	}
 
@@ -428,7 +478,7 @@ public class SnakeView extends TileView {
             if (now - mLastMove > mMoveDelay) {
                 clearTiles();
                 updateWalls();
-                updateSnake();
+                updateSnake(true);
                 updateApples();
                 mLastMove = now;
             }
@@ -437,18 +487,43 @@ public class SnakeView extends TileView {
 
     }
     
-    public void updateNow() {
+    public void updateNow(boolean move) {
         if (mMode == RUNNING) {
             long now = System.currentTimeMillis();
             clearTiles();
             updateWalls();
-            updateSnake();
+            updateSnake(true);
             updateApples();
             mLastMove = now;
         }
-
     }
     
+	public void resyncWithLayout(Layout mLayout) {
+        if (mMode == PAUSE) {
+        	Debug.print("Resyncing game properties", debug);
+            mSnakeTrail.clear();
+            for (Coordinate coord : mLayout.snake){
+            	mSnakeTrail.add(coord);
+            }
+            mLayout.snake.clear();
+            
+            mAppleList.clear();
+            for (Coordinate coord : mLayout.apples){
+            	mAppleList.add(coord);
+            }
+            mLayout.apples.clear();
+            
+            mNextDirection = mLayout.mNextDirection;
+            mScore = mLayout.mScore;
+            mMoveDelay = mLayout.mMoveDelay;
+            width = mLayout.width;
+            height = mLayout.height;
+            typeOfGame = mLayout.typeOfGame;
+    		//updateNow();
+    		//invalidate();
+       }
+	}
+	
 	private void printGame() {
 		Debug.print("Printing Snake", debug);
 		for (Coordinate currentCoord : mSnakeTrail) {
@@ -506,6 +581,7 @@ public class SnakeView extends TileView {
 	        	mNextDirection = myLayout.mNextDirection;
 	        	mMoveDelay = myLayout.mMoveDelay;
 	        	mScore = myLayout.mScore;
+	        	typeOfGame = myLayout.typeOfGame;
         	}
         }
         else {
@@ -579,7 +655,11 @@ public class SnakeView extends TileView {
         }
         for (int y = 1; y < mYTileCount - 1; y++) {
             setTile(GREEN_STAR, 0, y);
-            setTile(GREEN_STAR, mXTileCount - 1, y);
+            if (myClient.amILeader() == false && typeOfGame == 2 && typeOfNode == true){
+            	
+            }else{
+            	setTile(GREEN_STAR, mXTileCount - 1, y);
+            }
         }
     }
 
@@ -587,6 +667,9 @@ public class SnakeView extends TileView {
      * Draws some apples.
      */
     private void updateApples() {
+        if (mAppleList == null || mAppleList.size() == 0)
+        	return;
+        
         for (Coordinate c : mAppleList) {
             setTile(YELLOW_STAR, c.x, c.y);
         }
@@ -597,11 +680,16 @@ public class SnakeView extends TileView {
      * or an apple). If he's not going to die, we then add to the front and subtract from the rear
      * in order to simulate motion. If we want to grow him, we don't subtract from the rear.
      */
-    private void updateSnake() {
+    private void updateSnake(boolean move) {
         boolean growSnake = false;
 
         // Grab the snake by the head
+        if (mSnakeTrail == null || mSnakeTrail.size() == 0)
+        	return;
+        
         Coordinate head = mSnakeTrail.get(0);
+        
+        if (true == move) {
         Coordinate newHead = new Coordinate(1, 1);
 
         mDirection = mNextDirection;
@@ -656,6 +744,7 @@ public class SnakeView extends TileView {
                 //mMoveDelay *= 0.9;
 
                 growSnake = true;
+                needResync = true;
             }
         }
 
@@ -665,7 +754,7 @@ public class SnakeView extends TileView {
         if (!growSnake) {
             mSnakeTrail.remove(mSnakeTrail.size() - 1);
         }
-
+        }
         int index = 0;
         for (Coordinate c : mSnakeTrail) {
             if (index == 0) {
@@ -675,7 +764,6 @@ public class SnakeView extends TileView {
             }
             index++;
         }
-
     }
 	
     /**
@@ -715,7 +803,6 @@ public class SnakeView extends TileView {
         }
         return coordArrayList;
     }
-
 
 
 }
