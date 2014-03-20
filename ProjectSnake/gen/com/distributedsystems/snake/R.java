@@ -85,22 +85,25 @@ containing a value of this type.
         public static final int yellowstar=0x7f020007;
     }
     public static final class id {
-        public static final int action_settings=0x7f08000f;
-        public static final int arrowContainer=0x7f08000a;
+        public static final int action_settings=0x7f080012;
+        public static final int arrowContainer=0x7f08000d;
         public static final int background=0x7f080000;
-        public static final int btn_OK=0x7f080006;
+        public static final int btn_OK=0x7f080009;
+        public static final int duplicate=0x7f080007;
         public static final int edit_settings_IP=0x7f080005;
         public static final int edit_settings_user=0x7f080003;
-        public static final int imageDown=0x7f08000e;
-        public static final int imageLeft=0x7f08000c;
-        public static final int imageRight=0x7f08000d;
-        public static final int imageUp=0x7f08000b;
+        public static final int extend=0x7f080008;
+        public static final int imageDown=0x7f080011;
+        public static final int imageLeft=0x7f08000f;
+        public static final int imageRight=0x7f080010;
+        public static final int imageUp=0x7f08000e;
+        public static final int radioGroup=0x7f080006;
         public static final int settingsFieldsContainer=0x7f080001;
-        public static final int snake=0x7f080007;
-        public static final int text=0x7f080008;
+        public static final int snake=0x7f08000a;
+        public static final int text=0x7f08000b;
         public static final int text_settings_IP=0x7f080004;
         public static final int text_settings_user=0x7f080002;
-        public static final int txt_info=0x7f080009;
+        public static final int txt_info=0x7f08000c;
     }
     public static final class layout {
         public static final int activity_settings=0x7f030000;
@@ -112,14 +115,16 @@ containing a value of this type.
     public static final class string {
         public static final int action_settings=0x7f060005;
         public static final int app_name=0x7f060000;
-        public static final int button_send=0x7f06000b;
+        public static final int button_send=0x7f06000d;
+        public static final int duplicate=0x7f06000b;
         public static final int edit_settings_IP=0x7f06000a;
         public static final int edit_settings_user=0x7f060008;
+        public static final int extend=0x7f06000c;
         public static final int hello_world=0x7f060006;
         public static final int mode_lose=0x7f060003;
         public static final int mode_pause=0x7f060002;
         public static final int mode_ready=0x7f060001;
-        public static final int text_default_ip_tracker=0x7f06000c;
+        public static final int text_default_ip_tracker=0x7f06000e;
         public static final int text_settings_IP=0x7f060009;
         public static final int text_settings_user=0x7f060007;
         public static final int title_activity_settings=0x7f060004;

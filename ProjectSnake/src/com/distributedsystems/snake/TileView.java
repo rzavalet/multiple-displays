@@ -54,6 +54,8 @@ public class TileView extends View {
     private static int mXOffset;
     private static int mYOffset;
 
+    private static int mMyPos;
+    
     private final Paint mPaint = new Paint();
     private static final boolean debug = true;
     
@@ -118,10 +120,10 @@ public class TileView extends View {
     @Override
     public void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        for (int x = 0; x < mXTileCount; x += 1) {
+        for (int x = mMyPos; x < mXTileCount; x += 1) {
             for (int y = 0; y < mYTileCount; y += 1) {
                 if (mTileGrid[x][y] > 0) {
-                    canvas.drawBitmap(mTileArray[mTileGrid[x][y]], mXOffset + x * mTileSize,
+                    canvas.drawBitmap(mTileArray[mTileGrid[x][y]], mXOffset + (x-mMyPos) * mTileSize,
                             mYOffset + y * mTileSize, mPaint);
                 }
             }
@@ -163,27 +165,61 @@ public class TileView extends View {
 		return height;
 	}
 
-	public void resetView(int width, int height) {
+	public void resetView(int width, int height, int typeOfGame, int myPos) {
     	
-    	if (TileView.width > width) {
-    		TileView.width = width;
-    	}
-    	if (TileView.height > height) {
-    		TileView.height = height;
-    	}
-    	
-    	Debug.print("New Width: " + TileView.width, debug);
-    	Debug.print("New Height: " + TileView.height, debug);
-    	
-        mXTileCount = (int) Math.floor(TileView.width / mTileSize);
-        mYTileCount = (int) Math.floor(TileView.height / mTileSize);
+		if (1 == typeOfGame || 0 == typeOfGame){
+	        mMyPos = 0;
+	        
+	    	if (TileView.width > width) {
+	    		TileView.width = width;
+	    	}
+	    	if (TileView.height > height) {
+	    		TileView.height = height;
+	    	}
+	    	Debug.print("New Width: " + TileView.width, debug);
+	    	Debug.print("New Height: " + TileView.height, debug);
+	    	
+	        mXTileCount = (int) Math.floor(TileView.width / mTileSize);
+	        mYTileCount = (int) Math.floor(TileView.height / mTileSize);
 
-        mXOffset = ((TileView.originalWidth - (mTileSize * mXTileCount)) / 2);
-        mYOffset = ((TileView.originalHeight - (mTileSize * mYTileCount)) / 2);
+	        mXOffset = ((TileView.originalWidth - (mTileSize * mXTileCount)) / 2);
+	        mYOffset = ((TileView.originalHeight - (mTileSize * mYTileCount)) / 2);
 
-        /*TODO: What would happen if snake or apples are out of grid*/
-        mTileGrid = new int[mXTileCount][mYTileCount];
-        clearTiles();
+
+	        
+	        /*TODO: What would happen if snake or apples are out of grid*/
+	        mTileGrid = new int[mXTileCount][mYTileCount];
+	        clearTiles();
+	        
+		} else {
+
+			mMyPos = (int) Math.floor(width / mTileSize);
+	    	
+			
+	    	if (TileView.height > height) {
+	    		TileView.height = height;
+	    	}
+	    	
+	    	Debug.print("New Width: " + TileView.width, debug);
+	    	Debug.print("New Height: " + TileView.height, debug);
+	    	
+	        mXTileCount = (int) Math.floor(TileView.width / mTileSize);
+	        mYTileCount = (int) Math.floor(TileView.height / mTileSize);
+
+	        mXOffset = ((TileView.originalWidth - (mTileSize * mXTileCount)) / 2);
+	        mYOffset = ((TileView.originalHeight - (mTileSize * mYTileCount)) / 2);
+
+	        TileView.width += width;
+	        
+	        mXTileCount = (int) Math.floor(TileView.width / mTileSize);
+	        mYTileCount = (int) Math.floor(TileView.height / mTileSize);
+	        
+	        mTileGrid = new int[mXTileCount+1][mYTileCount];
+	        clearTiles();
+	        
+		}
+    	
+
     }
     
     @Override

@@ -9,7 +9,16 @@ public class SnakeApplication extends Application {
 	private String myId;
 	private int myPort;
 	private PeerInformation tracker;
+	private int typeOfGame;
 	
+	public int getTypeOfGame() {
+		return typeOfGame;
+	}
+
+	public void setTypeOfGame(int typeOfGame) {
+		this.typeOfGame = typeOfGame;
+	}
+
 	public String getMyId() {
 		return myId;
 	}

@@ -5,11 +5,13 @@ import java.io.IOException;
 import com.distributedsystems.snake.BackgroundView;
 import com.distributedsystems.snake.Coordinate;
 import com.distributedsystems.snake.HandlerInterface;
+import com.distributedsystems.snake.Layout;
 import com.distributedsystems.snake.Snake;
 import com.distributedsystems.snake.SnakeView;
 import com.distributedsystems.utils.Debug;
 
 import android.content.Context;
+import android.os.Handler;
 
 public class PeerClient {
 
@@ -18,7 +20,8 @@ public class PeerClient {
 	private BackgroundView background = null;
 	private boolean shutdown = false;
 	private static final boolean debug = true;
-	
+	private Layout tempLayout = null;
+
 	
 	/************ HERE ARE THE HANDLE METHODS **********/
 	
@@ -141,6 +144,59 @@ public class PeerClient {
 		}
 	}
 	
+	private class Resync implements HandlerInterface {
+		private Layout layout;
+		private SnakeView snakeView;
+		
+		public Resync(Layout mLayout, SnakeView mSnakeView) {
+			this.layout = mLayout;
+			this.snakeView = mSnakeView;
+		}
+		
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			PeerMessage messageList = null;
+			Debug.print("Received Config", debug);
+			
+			if (message.getMessageType().equals(PeerNode.SEND_SNAKE)) {
+				String[] coord = message.getMessageData().split(" ");
+				//layout.snake.clear();
+				layout.snake.add(new Coordinate(Integer.parseInt(coord[0]), Integer.parseInt(coord[1])));
+			}
+			else if (message.getMessageType().equals(PeerNode.SEND_APPLES)) {
+				String[] coord = message.getMessageData().split(" ");
+				//layout.apples.clear();
+				layout.apples.add(new Coordinate(Integer.parseInt(coord[0]), Integer.parseInt(coord[1])));
+			}
+			else if (message.getMessageType().equals(PeerNode.SEND_CONFIG)) {
+				String[] values = message.getMessageData().split(" ");
+				layout.mMoveDelay = Integer.parseInt(values[0]);
+				layout.mNextDirection = Integer.parseInt(values[1]);
+				layout.mScore = Integer.parseInt(values[2]);
+				layout.width = Integer.parseInt(values[3]);
+				layout.height = Integer.parseInt(values[4]);
+				
+				if (snakeView.isStarted() == true) {
+					snakeView.post(new Runnable(){
+					    public void run(){
+					    	snakeView.resyncWithLayout(layout);
+					    }
+					});
+				}
+			}
+			
+			messageList = new PeerMessage(PeerNode.REPLY, "");
+			
+			try {
+				connection.sendData(messageList);	
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+	}
+	
 	private class SendApples implements HandlerInterface {
 		private SnakeView snake;
 		
@@ -188,19 +244,19 @@ public class PeerClient {
 			
 			backgroundView.post(new Runnable(){
 			    public void run(){
-			    	backgroundView.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]));
+			    	backgroundView.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]), snake.getTypeOfGame());
 			    	backgroundView.invalidate();
 			    }
 			});
 			
 			snake.post(new Runnable(){
 			    public void run(){
-			    	snake.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]));
+			    	snake.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]), snake.getTypeOfGame(), 0);
 			    }
 			});
 			
 			messageList = new PeerMessage(PeerNode.REPLY, snake.getmMoveDelay() + " " + snake.getmNextDirection() + " " + snake.getmScore()
-					+ " " + snake.getMyWidth() + " " + snake.getMyHeight());
+					+ " " + snake.getMyWidth() + " " + snake.getMyHeight() + " " + snake.getTypeOfGame());
 			
 			try {
 				connection.sendData(messageList);		
@@ -386,13 +442,11 @@ public class PeerClient {
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** ADVANCING", debug);
 			if (snakeView.isStarted() == true) {
-				if (snakeView.isStarted() == true) {
-					snakeView.post(new Runnable(){
-					    public void run(){
-					    	snakeView.advance();
-					    }
-					});
-				}
+				snakeView.post(new Runnable(){
+				    public void run(){
+				    	snakeView.advance();
+				    }
+				});
 				
 			}
 			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Advanced");
@@ -404,14 +458,36 @@ public class PeerClient {
 			}
 		}
 	}
+
 	
+
+    Handler timerHandler = new Handler();
+    Runnable timerRunnable = new Runnable() {
+
+        @Override
+        public void run() {
+            long millis = System.currentTimeMillis() - peerNode.getLastUpdate();
+            Debug.print("Leader selection timeout", debug);
+            if (amILeader() == false && millis > 8000 && PeerClient.this.snakeView!=null && 
+            		PeerClient.this.snakeView.getmMode() == SnakeView.RUNNING) 
+            {
+            	Debug.print("Setting new leader", debug);
+            	setLeader();
+            	resync();
+            	PeerClient.this.snakeView.update();
+            	peerNode.setLastUpdate(System.currentTimeMillis());
+            }
+            timerHandler.postDelayed(this, 10000);
+        }
+    };
+    
 	/**** HERE IS THE PEER CLIENT CLASS *****/
 	public PeerClient(String id, int port, PeerInformation trackerPeerInformation, SnakeView mSnakeView, BackgroundView mBackgroundView, Context appContext) {
 
 		peerNode = new PeerNode(id, port, trackerPeerInformation, appContext);
 		snakeView = mSnakeView;
 		background = mBackgroundView;
-		
+		tempLayout = new Layout();
 		shutdown = false;
 		
 		//Add handlers
@@ -454,6 +530,12 @@ public class PeerClient {
 		HandlerInterface sendConfig = new SendConfig(snakeView, background);
 		peerNode.addHandler(PeerNode.GET_CONFIG, sendConfig);	
 		
+		
+		HandlerInterface resyncSnake = new Resync(tempLayout, snakeView);
+		peerNode.addHandler(PeerNode.SEND_SNAKE, resyncSnake);	
+		peerNode.addHandler(PeerNode.SEND_APPLES, resyncSnake);	
+		peerNode.addHandler(PeerNode.SEND_CONFIG, resyncSnake);	
+		
 		HandlerInterface blockGame = new BlockGame(snakeView);
 		peerNode.addHandler(PeerNode.BLOCK, blockGame);	
 		
@@ -465,8 +547,11 @@ public class PeerClient {
 		
 		HandlerInterface advance = new Advance();
 		peerNode.addHandler(PeerNode.ADVANCE, advance);	
+		
+		timerHandler.postDelayed(timerRunnable, 0);
 	}
-	
+
+    
 	public boolean isShutdown() {
 		return shutdown;
 	}
@@ -514,6 +599,30 @@ public class PeerClient {
 		System.out.println("BYE: Quit");
 	}
 	
+	public void resync() {
+		if (amILeader() == false) {
+			return;
+		}
+		
+		Debug.print("Resync-ing...", debug);
+		Layout layout = new Layout();
+		
+		for(Coordinate coordinate : this.snakeView.getmSnakeTrail()){
+			layout.snake.add(coordinate);
+		}
+		
+		for(Coordinate coordinate : this.snakeView.getmAppleList()){
+			layout.apples.add(coordinate);
+		}
+		layout.mMoveDelay = this.snakeView.getmMoveDelay();
+		layout.mNextDirection = this.snakeView.getmNextDirection();
+		layout.mScore = this.snakeView.getmScore();
+		layout.width = this.snakeView.getMyWidth();
+		layout.height = this.snakeView.getMyHeight();
+		layout.typeOfGame = this.snakeView.getTypeOfGame();
+		peerNode.broadcastLayout(layout);
+	}
+	
 	public void advance() {
 		if (amILeader() == false) {
 			return;
@@ -526,7 +635,7 @@ public class PeerClient {
 	}
 	
 	public void moveRight() {
-		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+		if (amILeader() == false) {
 			return;
 		}
 		
@@ -537,7 +646,7 @@ public class PeerClient {
 	}
 
 	public void moveUp() {
-		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+		if (amILeader() == false) {
 			return;
 		}
 		
@@ -548,7 +657,7 @@ public class PeerClient {
 	}
 
 	public void moveDown() {
-		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+		if (amILeader() == false) {
 			return;
 		}
 		
@@ -559,7 +668,7 @@ public class PeerClient {
 	}
 
 	public void moveLeft() {
-		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+		if (amILeader() == false) {
 			return;
 		}
 		
@@ -579,9 +688,11 @@ public class PeerClient {
 	}
 	
 	public void setLeader() {
-		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == true) {
+		if (amILeader() == true) {
 			return;
 		}
+		
+		peerNode.setLeaderId(peerNode.getPeerId());
 		
 		Debug.print("Sending new leader...", debug);
 		peerNode.broadcastMessage(PeerNode.NEW_LEADER, peerNode.getPeerId(), true);
@@ -601,6 +712,12 @@ public class PeerClient {
 			
 		}.start();
 	}
+
+
+	public void stopTimer() {
+		timerHandler.removeCallbacks(timerRunnable);
+	}
+
 
 	
 	/*

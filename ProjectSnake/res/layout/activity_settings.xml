@@ -61,11 +61,35 @@
 	    android:layout_below="@+id/text_settings_user"
 	    android:layout_toRightOf="@+id/text_settings_IP"
 	    android:hint="@string/edit_settings_IP"/>
+    
+    <RadioGroup android:id="@+id/radioGroup"
+    	android:layout_width="fill_parent"
+    	android:layout_height="wrap_content"
+    	android:layout_below="@+id/text_settings_IP"
+    	android:padding="20dp"
+    	android:orientation="horizontal">
+    	<RadioButton android:id="@+id/duplicate"
+        	android:layout_width="wrap_content"
+       	 	android:layout_height="wrap_content"
+        	android:text="@string/duplicate"
+        	android:textColor="@color/text_violet"
+	    	android:textSize="24sp"
+	    	android:visibility="visible" />
+    	<RadioButton android:id="@+id/extend"
+        	android:layout_width="wrap_content"
+        	android:layout_height="wrap_content"
+        	android:text="@string/extend"
+        	android:textColor="@color/text_violet"
+	    	android:textSize="24sp"
+	    	android:visibility="visible" />
+	</RadioGroup>
+
     <Button android:id="@+id/btn_OK"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-       	android:layout_below="@+id/text_settings_IP"
+        android:padding="20dp"
+       	android:layout_below="@+id/radioGroup"
         android:text="@string/button_send"
         android:onClick="setPreferences"
         />

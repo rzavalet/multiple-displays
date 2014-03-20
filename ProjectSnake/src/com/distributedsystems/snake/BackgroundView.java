@@ -95,7 +95,7 @@ public class BackgroundView extends View {
         };
     }
 
-	public void resetView(int mWidth, int mHeight) {
+	public void resetView(int mWidth, int mHeight, int typeOfGame) {
     	if (BackgroundView.width > mWidth) {
     		BackgroundView.width = mWidth;
     	}

@@ -23,6 +23,7 @@ import com.distributedsystems.utils.Debug;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;
+import android.os.Handler;
 import android.util.Log;
 
 public class PeerNode {
@@ -42,6 +43,9 @@ public class PeerNode {
 	public static final String GET_SNAKE = "SNAK";
 	public static final String GET_APPLES = "APPL";
 	public static final String GET_CONFIG = "CONF";
+	public static final String SEND_SNAKE = "SSNA";
+	public static final String SEND_APPLES = "SAPP";
+	public static final String SEND_CONFIG = "SCON";
 	public static final String BLOCK = "BLOC";
 	public static final String UNBLOCK = "UNBL";
 	public static final String NEW_LEADER = "NEWL";
@@ -54,11 +58,13 @@ public class PeerNode {
 	private String leaderId = null;
 	private boolean shutdown = false;
 	private static final boolean debug = true;
+	private long lastUpdate = 0;
 	
 	private ServerSocket serverSocket = null;
 	
 	private Context myContext = null;
-	
+
+    
 	public PeerNode() {
 		Debug.print("Creating Peer Node", debug);
 				
@@ -99,6 +105,7 @@ public class PeerNode {
 		else {
 			this.leaderId = myId;
 		}
+        
 	}
 	
 	private String wifiIpAddress() {
@@ -221,6 +228,14 @@ public class PeerNode {
 		this.shutdown = shutdown;
 	}
 	
+	public long getLastUpdate() {
+		return lastUpdate;
+	}
+
+	public void setLastUpdate(long lastUpdate) {
+		this.lastUpdate = lastUpdate;
+	}
+
 	public String getPeerId() {
 		return this.myPeerInformation.getPeerId();
 	}
@@ -300,7 +315,7 @@ public class PeerNode {
 			}
 		}
 	}
-
+	
 	public Layout askForLayout(String leaderPeerId, int width, int height) {
 		Layout layout = new Layout();
 		
@@ -396,6 +411,7 @@ public class PeerNode {
 		layout.mScore = Integer.parseInt(fields[2]);
 		layout.width = Integer.parseInt(fields[3]);
 		layout.height = Integer.parseInt(fields[4]);
+		layout.typeOfGame = Integer.parseInt(fields[5]);
 		
 		messages = connectAndSend(leaderPeer, UNBLOCK, "", true);
 		if (messages == null) {
@@ -496,6 +512,93 @@ public class PeerNode {
 		}
 	}
 	
+
+	public void broadcastLayout(Layout layout) {
+		List<PeerMessage> messages = null;
+		PeerMessage message = null;
+				
+		for(String remotePeerId : getPeerKeys()) {
+			messages = connectAndSend(getPeer(remotePeerId), PeerNode.BLOCK, " ", true);
+			
+			if (messages == null) {
+				return;
+			}
+			
+			if (messages.size() <= 0) {
+				return;
+			}
+			
+			message = messages.get(0);
+			if (!message.getMessageType().equals(REPLY)) {
+				return;
+			}
+			for (Coordinate coordinate : layout.snake){
+				messages = connectAndSend(getPeer(remotePeerId), PeerNode.SEND_SNAKE, coordinate.x + " " + coordinate.y, true);
+				
+				if (messages == null) {
+					return;
+				}
+				
+				if (messages.size() <= 0) {
+					return;
+				}
+				
+				message = messages.get(0);
+				if (!message.getMessageType().equals(REPLY)) {
+					return;
+				}
+
+			}
+			
+			for (Coordinate coordinate : layout.apples){
+				messages = connectAndSend(getPeer(remotePeerId), PeerNode.SEND_APPLES, coordinate.x + " " + coordinate.y, true);
+				
+				if (messages == null) {
+					return;
+				}
+				
+				if (messages.size() <= 0) {
+					return;
+				}
+				
+				message = messages.get(0);
+				if (!message.getMessageType().equals(REPLY)) {
+					return;
+				}
+
+			}
+			
+			messages = connectAndSend(getPeer(remotePeerId), PeerNode.SEND_CONFIG, 
+					layout.mMoveDelay + " " + layout.mNextDirection + " " + layout.mScore
+					+ " " + layout.width + " " + layout.height + " " + layout.typeOfGame, true);
+			
+			if (messages == null) {
+				return;
+			}
+			
+			if (messages.size() <= 0) {
+				return;
+			}
+			
+			message = messages.get(0);
+			if (!message.getMessageType().equals(REPLY)) {
+				return;
+			}
+		
+			messages = connectAndSend(getPeer(remotePeerId), PeerNode.UNBLOCK, " ", true);
+			
+			if (messages == null) {
+				return;
+			}
+			
+			if (messages.size() <= 0) {
+				return;
+			}
+		}
+		
+		
+	}
+	
 	public PeerMessage sendToPeer(String remotePeerId, 
 			String messageType,  String messageData, boolean waitReply) {
 		
@@ -589,6 +692,8 @@ public class PeerNode {
 									handler.handleMessage(peerConnection, message);
 								}
 								peerConnection.close();
+								lastUpdate = System.currentTimeMillis();
+								
 							} catch (IOException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
@@ -615,7 +720,6 @@ public class PeerNode {
 			}
 
 	}
-
 
 
 	

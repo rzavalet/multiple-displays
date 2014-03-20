@@ -27,8 +27,11 @@
 
     <string name="text_settings_user">User Name:</string>
     <string name="edit_settings_user">Type your user name</string>
-    <string name="text_settings_IP">Server IP:</string>
-    <string name="edit_settings_IP">Type the server IP address</string>
+    <string name="text_settings_IP">P2P Tracker IP:</string>
+    <string name="edit_settings_IP">Type the P2P Tracker IP address</string>
+    
+    <string name="duplicate">Duplicate Screen</string>
+    <string name="extend">Extend Screen</string>
     
     <string name="button_send">OK</string>
     <string name="text_default_ip_tracker">192.168.1.68</string>
