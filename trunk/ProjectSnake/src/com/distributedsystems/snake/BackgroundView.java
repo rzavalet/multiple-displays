@@ -34,7 +34,10 @@ import com.distributedsystems.snake.R;
 public class BackgroundView extends View {
 
     private int[] mColors = new int[4];
-
+    
+    protected static int width;
+    protected static int height;
+    
     private final short[] mIndices =
             { 0, 1, 2, 0, 3, 4, 0, 1, 4 // Corner points for triangles (with offset = 2)
     };
@@ -79,6 +82,9 @@ public class BackgroundView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
 
+    	width = w;
+    	height = h;
+    	
      // Construct our center and four corners
         mVertexPoints = new float[] {
                 w / 2, h / 2,
@@ -88,5 +94,21 @@ public class BackgroundView extends View {
                 0, h
         };
     }
+
+	public void resetView(int mWidth, int mHeight) {
+    	if (BackgroundView.width > mWidth) {
+    		BackgroundView.width = mWidth;
+    	}
+    	if (BackgroundView.height > mHeight) {
+    		BackgroundView.height = mHeight;
+    	}
+        mVertexPoints = new float[] {
+        		BackgroundView.width / 2, BackgroundView.height / 2,
+                0, 0,
+                BackgroundView.width, 0,
+                BackgroundView.width, BackgroundView.height,
+                0, BackgroundView.height
+        };
+	}
 
 }

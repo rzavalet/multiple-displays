@@ -12,11 +12,16 @@ public class Layout {
     public long mMoveDelay;
     public int mNextDirection;
     
+    public int width;
+    public int height;
+    
     public Layout() {
     	snake = new ArrayList<Coordinate>();
     	apples = new ArrayList<Coordinate>();
     	mScore = -1;
     	mMoveDelay = -1;
     	mNextDirection = -1;
+    	width = -1;
+    	height = -1;
     }
 }

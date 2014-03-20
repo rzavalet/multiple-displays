@@ -45,6 +45,7 @@ public class PeerNode {
 	public static final String BLOCK = "BLOC";
 	public static final String UNBLOCK = "UNBL";
 	public static final String NEW_LEADER = "NEWL";
+	public static final String ADVANCE = "ADVC";
 	
 	private PeerInformation myPeerInformation;
 	private HashMap<String, PeerInformation> fingerTable;
@@ -53,6 +54,8 @@ public class PeerNode {
 	private String leaderId = null;
 	private boolean shutdown = false;
 	private static final boolean debug = true;
+	
+	private ServerSocket serverSocket = null;
 	
 	private Context myContext = null;
 	
@@ -298,7 +301,7 @@ public class PeerNode {
 		}
 	}
 
-	public Layout askForLayout(String leaderPeerId) {
+	public Layout askForLayout(String leaderPeerId, int width, int height) {
 		Layout layout = new Layout();
 		
 		List<PeerMessage> messages = null;
@@ -368,7 +371,7 @@ public class PeerNode {
 		
 		//Now obtain the apples coordinates
 		messages = null;
-		messages = connectAndSend(leaderPeer, GET_CONFIG, "", true);
+		messages = connectAndSend(leaderPeer, GET_CONFIG, width + " " + height, true);
 		if (messages == null) {
 			return null;
 		}
@@ -391,6 +394,8 @@ public class PeerNode {
 		layout.mMoveDelay = Integer.parseInt(fields[0]);
 		layout.mNextDirection = Integer.parseInt(fields[1]);
 		layout.mScore = Integer.parseInt(fields[2]);
+		layout.width = Integer.parseInt(fields[3]);
+		layout.height = Integer.parseInt(fields[4]);
 		
 		messages = connectAndSend(leaderPeer, UNBLOCK, "", true);
 		if (messages == null) {
@@ -468,9 +473,26 @@ public class PeerNode {
 			return null;
 		}
 	}
-	public void broadcastMessage(String messageType,  String messageData) {
+	public void broadcastMessage(String messageType,  String messageData, boolean waitReply) {
+		List<PeerMessage> messages = null;
+		PeerMessage message = null;
+		
 		for(String remotePeerId : getPeerKeys()) {
-			connectAndSend(getPeer(remotePeerId), messageType, messageData, false);
+			messages = connectAndSend(getPeer(remotePeerId), messageType, messageData, waitReply);
+			if (waitReply == true) {
+				if (messages == null) {
+					return;
+				}
+				
+				if (messages.size() <= 0) {
+					return;
+				}
+				
+				message = messages.get(0);
+				if (!message.getMessageType().equals(REPLY)) {
+					return;
+				}
+			}
 		}
 	}
 	
@@ -533,7 +555,7 @@ public class PeerNode {
 	public void connectionHandler() {
 		Debug.print("...Starting connection Handler", debug);
 		//Set the socket
-			ServerSocket serverSocket = null;
+			 serverSocket = null;
 			try {
 				serverSocket = new ServerSocket(getPort());
 				serverSocket.setSoTimeout(2);
@@ -580,6 +602,16 @@ public class PeerNode {
 					//Debug.print("...Waiting connection", debug);
 				}
 				
+			}
+			Debug.print("Shutting down thread...", debug);
+			if (serverSocket != null) {
+				Debug.print("Closing server socket...", debug);
+				try {
+					serverSocket.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 
 	}
