@@ -165,7 +165,7 @@ public class TileView extends View {
 		return height;
 	}
 
-	public void resetView(int width, int height, int typeOfGame, int myPos) {
+	public void resetView(int width, int height, int typeOfGame, boolean typeOfNode) {
     	
 		if (1 == typeOfGame || 0 == typeOfGame){
 	        mMyPos = 0;
@@ -193,7 +193,12 @@ public class TileView extends View {
 	        
 		} else {
 
-			mMyPos = (int) Math.floor(width / mTileSize);
+			if (typeOfNode == false){
+				mMyPos = 0;
+			}
+			else{
+				mMyPos = (int) Math.floor(width / mTileSize);
+			}
 	    	
 			
 	    	if (TileView.height > height) {

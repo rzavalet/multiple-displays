@@ -582,6 +582,8 @@ public class SnakeView extends TileView {
 	        	mMoveDelay = myLayout.mMoveDelay;
 	        	mScore = myLayout.mScore;
 	        	typeOfGame = myLayout.typeOfGame;
+	        	
+	        	resetView(myLayout.width, myLayout.height, typeOfGame, typeOfNode);
         	}
         }
         else {
@@ -655,11 +657,7 @@ public class SnakeView extends TileView {
         }
         for (int y = 1; y < mYTileCount - 1; y++) {
             setTile(GREEN_STAR, 0, y);
-            if (myClient.amILeader() == false && typeOfGame == 2 && typeOfNode == true){
-            	
-            }else{
-            	setTile(GREEN_STAR, mXTileCount - 1, y);
-            }
+            setTile(GREEN_STAR, mXTileCount - 1, y);
         }
     }
 

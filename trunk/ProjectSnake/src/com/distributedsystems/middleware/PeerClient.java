@@ -251,7 +251,7 @@ public class PeerClient {
 			
 			snake.post(new Runnable(){
 			    public void run(){
-			    	snake.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]), snake.getTypeOfGame(), 0);
+			    	snake.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]), snake.getTypeOfGame(), snake.isTypeOfNode());
 			    }
 			});
 			
