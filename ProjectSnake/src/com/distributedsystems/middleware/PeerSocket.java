@@ -215,7 +215,9 @@ public class PeerSocket implements SocketInterface{
 					//out.close();
 				} catch (IOException e) {
 					e.printStackTrace();
-				}				
+				} catch (NullPointerException e){
+					e.printStackTrace();
+				}
 			}
 		};
 		
@@ -234,6 +236,9 @@ public class PeerSocket implements SocketInterface{
 			socket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}catch (NullPointerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
@@ -251,6 +256,9 @@ public class PeerSocket implements SocketInterface{
 					size = in.read(dataInThread);
 					Debug.print("...Received bytes ( " + size + "): " + new String(dataInThread), debug);
 				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}catch (NullPointerException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

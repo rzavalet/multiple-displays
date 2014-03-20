@@ -2,6 +2,7 @@ package com.distributedsystems.middleware;
 
 import java.io.IOException;
 
+import com.distributedsystems.snake.BackgroundView;
 import com.distributedsystems.snake.Coordinate;
 import com.distributedsystems.snake.HandlerInterface;
 import com.distributedsystems.snake.Snake;
@@ -14,6 +15,7 @@ public class PeerClient {
 
 	private PeerNode peerNode;
 	private SnakeView snakeView = null;
+	private BackgroundView background = null;
 	private boolean shutdown = false;
 	private static final boolean debug = true;
 	
@@ -170,9 +172,10 @@ public class PeerClient {
 	
 	private class SendConfig implements HandlerInterface {
 		private SnakeView snake;
-		
-		public SendConfig(SnakeView snake) {
+		private BackgroundView backgroundView;
+		public SendConfig(SnakeView snake, BackgroundView mBackgroundView) {
 			this.snake = snake;
+			this.backgroundView = mBackgroundView;
 		}
 		
 		@Override
@@ -180,7 +183,24 @@ public class PeerClient {
 			PeerMessage messageList = null;
 			Debug.print("Sending configuration", debug);
 			
-			messageList = new PeerMessage(PeerNode.REPLY, snake.getmMoveDelay() + " " + snake.getmNextDirection() + " " + snake.getmScore());
+			final String[] size = message.getMessageData().split(" ");
+
+			
+			backgroundView.post(new Runnable(){
+			    public void run(){
+			    	backgroundView.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]));
+			    	backgroundView.invalidate();
+			    }
+			});
+			
+			snake.post(new Runnable(){
+			    public void run(){
+			    	snake.resetView(Integer.parseInt(size[0]), Integer.parseInt(size[1]));
+			    }
+			});
+			
+			messageList = new PeerMessage(PeerNode.REPLY, snake.getmMoveDelay() + " " + snake.getmNextDirection() + " " + snake.getmScore()
+					+ " " + snake.getMyWidth() + " " + snake.getMyHeight());
 			
 			try {
 				connection.sendData(messageList);		
@@ -235,7 +255,13 @@ public class PeerClient {
 		@Override
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** BLOCKING GAME", debug);
-			snakeView.blockSnake();
+			if (snakeView.isStarted() == true) {
+				snakeView.post(new Runnable(){
+				    public void run(){
+				    	snakeView.blockSnake();
+				    }
+				});
+			}
 			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Peer Blocked");
 			try {
 				connection.sendData(replyMessage);
@@ -256,7 +282,13 @@ public class PeerClient {
 		@Override
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** UNBLOCKING GAME",debug);
-			snakeView.unblockSnake();
+			if (snakeView.isStarted() == true) {
+				snakeView.post(new Runnable(){
+				    public void run(){
+				    	snakeView.unblockSnake();
+				    }
+				});
+			}
 			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Peer Unblocked");
 			try {
 				connection.sendData(replyMessage);
@@ -285,7 +317,16 @@ public class PeerClient {
 		@Override
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** MOVING RIGHT", debug);
-			snakeView.moveSnake(Snake.MOVE_RIGHT);
+			if (snakeView.isStarted() == true) {
+				snakeView.moveSnake(Snake.MOVE_RIGHT, true);
+			}
+			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Moved right");
+			try {
+				connection.sendData(replyMessage);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -293,7 +334,16 @@ public class PeerClient {
 		@Override
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** MOVING LEFT", debug);
-			snakeView.moveSnake(Snake.MOVE_LEFT);
+			if (snakeView.isStarted() == true) {
+				snakeView.moveSnake(Snake.MOVE_LEFT, true);
+			}
+			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Moved left");
+			try {
+				connection.sendData(replyMessage);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -301,7 +351,16 @@ public class PeerClient {
 		@Override
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** MOVING UP", debug);
-			snakeView.moveSnake(Snake.MOVE_UP);
+	    	if (snakeView.isStarted() == true) {
+	    		snakeView.moveSnake(Snake.MOVE_UP, true);;
+	    	}			
+			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Moved up");
+			try {
+				connection.sendData(replyMessage);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -309,16 +368,50 @@ public class PeerClient {
 		@Override
 		public void handleMessage(PeerConnection connection, PeerMessage message) {
 			Debug.print("*** MOVING DOWN", debug);
-			snakeView.moveSnake(Snake.MOVE_DOWN);
+			if (snakeView.isStarted() == true) {
+				snakeView.moveSnake(Snake.MOVE_DOWN, true);
+			}
+			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Moved down");
+			try {
+				connection.sendData(replyMessage);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
+	private class Advance implements HandlerInterface {
+		@Override
+		public void handleMessage(PeerConnection connection, PeerMessage message) {
+			Debug.print("*** ADVANCING", debug);
+			if (snakeView.isStarted() == true) {
+				if (snakeView.isStarted() == true) {
+					snakeView.post(new Runnable(){
+					    public void run(){
+					    	snakeView.advance();
+					    }
+					});
+				}
+				
+			}
+			PeerMessage replyMessage = new PeerMessage(PeerNode.REPLY, "Advanced");
+			try {
+				connection.sendData(replyMessage);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	/**** HERE IS THE PEER CLIENT CLASS *****/
-	public PeerClient(String id, int port, PeerInformation trackerPeerInformation, SnakeView mSnakeView, Context appContext) {
+	public PeerClient(String id, int port, PeerInformation trackerPeerInformation, SnakeView mSnakeView, BackgroundView mBackgroundView, Context appContext) {
 
 		peerNode = new PeerNode(id, port, trackerPeerInformation, appContext);
 		snakeView = mSnakeView;
+		background = mBackgroundView;
+		
 		shutdown = false;
 		
 		//Add handlers
@@ -358,7 +451,7 @@ public class PeerClient {
 		HandlerInterface sendApples = new SendApples(snakeView);
 		peerNode.addHandler(PeerNode.GET_APPLES, sendApples);	
 		
-		HandlerInterface sendConfig = new SendConfig(snakeView);
+		HandlerInterface sendConfig = new SendConfig(snakeView, background);
 		peerNode.addHandler(PeerNode.GET_CONFIG, sendConfig);	
 		
 		HandlerInterface blockGame = new BlockGame(snakeView);
@@ -369,14 +462,22 @@ public class PeerClient {
 		
 		HandlerInterface newLeader = new NewLeader(peerNode);
 		peerNode.addHandler(PeerNode.NEW_LEADER, newLeader);	
+		
+		HandlerInterface advance = new Advance();
+		peerNode.addHandler(PeerNode.ADVANCE, advance);	
 	}
 	
 	public boolean isShutdown() {
 		return shutdown;
 	}
 
+	public boolean amILeader() {
+		return peerNode.getLeaderId().equals(peerNode.getPeerId());
+	}
+	
 	public void setShutdown(boolean shutdown) {
 		this.shutdown = shutdown;
+		this.peerNode.setShutdown(shutdown);
 	}
 
 	public boolean validateCommand(String[] command) {
@@ -413,38 +514,77 @@ public class PeerClient {
 		System.out.println("BYE: Quit");
 	}
 	
+	public void advance() {
+		if (amILeader() == false) {
+			return;
+		}
+		
+		Debug.print("Advancing...", debug);
+		//peerNode.broadcastMessage(PeerNode.BLOCK, "",true);
+		peerNode.broadcastMessage(PeerNode.ADVANCE, "",true);
+		//peerNode.broadcastMessage(PeerNode.UNBLOCK, "",true);
+	}
+	
 	public void moveRight() {
+		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+			return;
+		}
+		
 		Debug.print("Moving to the Right...", debug);
-		peerNode.broadcastMessage(PeerNode.MOVE_RIGHT, "");
+		//peerNode.broadcastMessage(PeerNode.BLOCK, "", true);
+		peerNode.broadcastMessage(PeerNode.MOVE_RIGHT, "", true);
+		//peerNode.broadcastMessage(PeerNode.UNBLOCK, "", true);
 	}
 
 	public void moveUp() {
+		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+			return;
+		}
+		
 		Debug.print("Moving Up...", debug);
-		peerNode.broadcastMessage(PeerNode.MOVE_UP, "");
+		//peerNode.broadcastMessage(PeerNode.BLOCK, "", true);
+		peerNode.broadcastMessage(PeerNode.MOVE_UP, "", true);
+		//peerNode.broadcastMessage(PeerNode.UNBLOCK, "", true);
 	}
 
 	public void moveDown() {
+		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+			return;
+		}
+		
 		Debug.print("Moving Down...", debug);
-		peerNode.broadcastMessage(PeerNode.MOVE_DOWN, "");
+		//peerNode.broadcastMessage(PeerNode.BLOCK, "", true);
+		peerNode.broadcastMessage(PeerNode.MOVE_DOWN, "", true);
+		//peerNode.broadcastMessage(PeerNode.UNBLOCK, "", true);
 	}
 
 	public void moveLeft() {
+		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == false) {
+			return;
+		}
+		
 		Debug.print("Moving to the Left...", debug);
-		peerNode.broadcastMessage(PeerNode.MOVE_LEFT, "");
+		//peerNode.broadcastMessage(PeerNode.BLOCK, "",true);
+		peerNode.broadcastMessage(PeerNode.MOVE_LEFT, "",true);
+		//peerNode.broadcastMessage(PeerNode.UNBLOCK, "",true);
 	}
 	public void endGame() {
 		Debug.print("Finishing game...", debug);
-		peerNode.broadcastMessage(PeerNode.END_GAME, "");
+		peerNode.broadcastMessage(PeerNode.END_GAME, "", true);
 	}
 
 	public void startGame() {
 		Debug.print("Starting new game...", debug);
-		peerNode.broadcastMessage(PeerNode.START_GAME, "");
+		peerNode.broadcastMessage(PeerNode.START_GAME, "", true);
 	}
 	
 	public void setLeader() {
+		if (peerNode.getLeaderId().equals(peerNode.getPeerId()) == true) {
+			return;
+		}
+		
 		Debug.print("Sending new leader...", debug);
-		peerNode.broadcastMessage(PeerNode.NEW_LEADER, peerNode.getPeerId());
+		peerNode.broadcastMessage(PeerNode.NEW_LEADER, peerNode.getPeerId(), true);
 	}
 	
 	public PeerNode getPeerNode() {

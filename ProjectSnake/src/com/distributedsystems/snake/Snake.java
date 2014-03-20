@@ -18,6 +18,7 @@ package com.distributedsystems.snake;
 
 import com.distributedsystems.middleware.PeerClient;
 import com.distributedsystems.snake.R;
+import com.distributedsystems.utils.Debug;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -47,9 +48,10 @@ public class Snake extends Activity {
     public static int MOVE_RIGHT = 3;
 
     private static String ICICLE_KEY = "snake-view";
-
+    private static final boolean debug = true;
+    
     private SnakeView mSnakeView;
-
+    private BackgroundView backgroundView;
     
     /**
      * Called when Activity is first created. Turns off the title bar, sets up the content views,
@@ -58,11 +60,14 @@ public class Snake extends Activity {
      */
     @Override
     public void onCreate(Bundle savedInstanceState) {
+    	Debug.print("--- onCreate", debug);
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.snake_layout);
 
         mSnakeView = (SnakeView) findViewById(R.id.snake);
+        backgroundView = (BackgroundView) findViewById(R.id.background);
+        
         mSnakeView.setDependentViews((TextView) findViewById(R.id.text),
                 findViewById(R.id.arrowContainer), findViewById(R.id.background));
 
@@ -93,21 +98,21 @@ public class Snake extends Activity {
                     direction |= (x > 1 - y) ? 2 : 0;
 
                     // Direction is same as the quadrant which was clicked
-                    mSnakeView.moveSnake(direction);
+                    mSnakeView.moveSnake(direction, false);
 
                 } else {
                     // If the game is not running then on touching any part of the screen
                     // we start the game by sending MOVE_UP signal to SnakeView
-                    mSnakeView.moveSnake(MOVE_UP);
+                    mSnakeView.moveSnake(MOVE_UP, false);
                 }
                 return false;
             }
         });
         
         final SnakeApplication context = (SnakeApplication)this.getApplication();
-		PeerClient myClient = new PeerClient(context.getMyId(), context.getMyPort(), context.getTracker(), mSnakeView, this);
+		PeerClient myClient = new PeerClient(context.getMyId(), context.getMyPort(), context.getTracker(), mSnakeView, backgroundView, this);
 		myClient.startHandler();
-      
+		
 		/*This should be corrected*/
         mSnakeView.setMyClient(myClient);
         
@@ -117,14 +122,22 @@ public class Snake extends Activity {
 
     @Override
     protected void onPause() {
-        super.onPause();
+    	Debug.print("--- onPause", debug);
+        
         // Pause the game along with the activity
         mSnakeView.setMode(SnakeView.PAUSE);
-        //myClient.setShutdown(true);
+        
+        /*We will restart the game*/
+        if (mSnakeView.getMyClient() != null) {
+        	mSnakeView.getMyClient().setShutdown(true);
+        	mSnakeView.setMyClient(null);
+        }
+        super.onPause();
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
+    	Debug.print("--- onSaveInstanceState", debug);
         // Store the game state
         outState.putBundle(ICICLE_KEY, mSnakeView.saveState());
     }
@@ -139,16 +152,16 @@ public class Snake extends Activity {
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:
-                mSnakeView.moveSnake(MOVE_UP);
+                mSnakeView.moveSnake(MOVE_UP, false);
                 break;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                mSnakeView.moveSnake(MOVE_RIGHT);
+                mSnakeView.moveSnake(MOVE_RIGHT, false);
                 break;
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                mSnakeView.moveSnake(MOVE_DOWN);
+                mSnakeView.moveSnake(MOVE_DOWN, false);
                 break;
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                mSnakeView.moveSnake(MOVE_LEFT);
+                mSnakeView.moveSnake(MOVE_LEFT, false);
                 break;
         }
 

@@ -17,6 +17,7 @@
 package com.distributedsystems.snake;
 
 import com.distributedsystems.snake.R;
+import com.distributedsystems.utils.Debug;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -43,12 +44,19 @@ public class TileView extends View {
 
     protected static int mXTileCount;
     protected static int mYTileCount;
-
+    
+    protected static int width;
+    protected static int height;
+    
+    protected static int originalWidth;
+    protected static int originalHeight;
+    
     private static int mXOffset;
     private static int mYOffset;
 
     private final Paint mPaint = new Paint();
-
+    private static final boolean debug = true;
+    
     /**
      * A hash that maps integer handles specified by the subclasser to the drawable that will be
      * used for that reference
@@ -141,11 +149,52 @@ public class TileView extends View {
      * @param y
      */
     public void setTile(int tileindex, int x, int y) {
-        mTileGrid[x][y] = tileindex;
+    	//Debug.print("Tile: (" + x + ", " + y + ") Grid Size: (" + mXTileCount +  ", " + mYTileCount + ")", debug);
+    	if (x<mXTileCount && y<mYTileCount) {
+    		mTileGrid[x][y] = tileindex;
+    	}
     }
 
+    public int getMyWidth() {
+		return width;
+	}
+
+	public int getMyHeight() {
+		return height;
+	}
+
+	public void resetView(int width, int height) {
+    	
+    	if (TileView.width > width) {
+    		TileView.width = width;
+    	}
+    	if (TileView.height > height) {
+    		TileView.height = height;
+    	}
+    	
+    	Debug.print("New Width: " + TileView.width, debug);
+    	Debug.print("New Height: " + TileView.height, debug);
+    	
+        mXTileCount = (int) Math.floor(TileView.width / mTileSize);
+        mYTileCount = (int) Math.floor(TileView.height / mTileSize);
+
+        mXOffset = ((TileView.originalWidth - (mTileSize * mXTileCount)) / 2);
+        mYOffset = ((TileView.originalHeight - (mTileSize * mYTileCount)) / 2);
+
+        /*TODO: What would happen if snake or apples are out of grid*/
+        mTileGrid = new int[mXTileCount][mYTileCount];
+        clearTiles();
+    }
+    
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+    	
+    	width = w;
+    	height = h;
+    	
+    	originalWidth = w;
+    	originalHeight = h;
+    	
         mXTileCount = (int) Math.floor(w / mTileSize);
         mYTileCount = (int) Math.floor(h / mTileSize);
 

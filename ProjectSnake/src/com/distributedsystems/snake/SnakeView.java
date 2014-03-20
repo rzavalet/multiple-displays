@@ -109,7 +109,7 @@ public class SnakeView extends TileView {
      * between snake movements. This will decrease as apples are captured.
      */
     private long mScore = 0;
-    private long mMoveDelay = 600;
+    private long mMoveDelay = 1000;
 
     /**
      * mSnakeTrail: A list of Coordinates that make up the snake's body mAppleList: The secret
@@ -122,6 +122,7 @@ public class SnakeView extends TileView {
      * myClient: This represents the application as a P2P client
      */
     private PeerClient myClient = null;
+    private boolean started = false;
     
     private static final boolean debug = true;
     
@@ -129,11 +130,26 @@ public class SnakeView extends TileView {
 
         @Override
         public void handleMessage(Message msg) {
-            SnakeView.this.update();
-            SnakeView.this.invalidate();
+        	//Debug.print("Moving automagically", debug);
+        	if (SnakeView.this.started && 
+        			SnakeView.this.myClient != null &&
+        			SnakeView.this.myClient.amILeader() == true &&
+        			SnakeView.this.mMode == RUNNING) 
+        	{
+        		SnakeView.this.update();
+        		SnakeView.this.invalidate();
+        		
+        		SnakeView.this.myClient.advance();
+        	}
         }
 
         public void sleep(long delayMillis) {
+        	try {
+				Thread.sleep(delayMillis);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
             this.removeMessages(0);
             sendMessageDelayed(obtainMessage(0), delayMillis);
         }
@@ -155,7 +171,15 @@ public class SnakeView extends TileView {
         initSnakeView(context);
     }
 
-    public void setmNextDirection(int mNextDirection) {
+    public boolean isStarted() {
+		return started;
+	}
+
+	public void setStarted(boolean started) {
+		this.started = started;
+	}
+
+	public void setmNextDirection(int mNextDirection) {
 		this.mNextDirection = mNextDirection;
 	}
 	public void setmScore(long mScore) {
@@ -222,6 +246,8 @@ public class SnakeView extends TileView {
             mArrowsView.setVisibility(View.GONE);
             mBackgroundView.setVisibility(View.GONE);
             str = res.getString(R.string.mode_lose, mScore);
+            started = false;
+            Debug.print("You loose", debug);
         }
 
         mStatusText.setText(str);
@@ -307,9 +333,9 @@ public class SnakeView extends TileView {
      *
      * @param direction The desired direction of movement
      */
-    public void moveSnake(int direction) {
+    public void moveSnake(int direction, boolean remote) {
 
-    	if (mMode == RUNNING) {
+    	if (mMode == RUNNING && remote == false) {
     		myClient.setLeader();
     	}
     	
@@ -319,9 +345,13 @@ public class SnakeView extends TileView {
                  * At the beginning of the game, or the end of a previous one,
                  * we should start a new game if UP key is clicked.
                  */
-                initNewGame();
+            	
+            	if (remote == false) {
+            		initNewGame();
+            	}
                 setMode(RUNNING);
                 update();
+                started = true;
                 return;
             }
 
@@ -329,15 +359,23 @@ public class SnakeView extends TileView {
                 /*
                  * If the game is merely paused, we should just continue where we left off.
                  */
+            	
+            	if (remote == false) {
+            		initNewGame();
+            	}
                 setMode(RUNNING);
                 update();
+                started = true;
                 return;
             }
 
             if (mDirection != SOUTH) {
                 mNextDirection = NORTH;
             }
-            myClient.moveUp();
+            
+            if (remote == false) {
+            	myClient.moveUp();
+            }
             return;
         }
 
@@ -345,7 +383,9 @@ public class SnakeView extends TileView {
             if (mDirection != NORTH) {
                 mNextDirection = SOUTH;
             }
-            myClient.moveDown();
+            if (remote == false) {
+            	myClient.moveDown();
+            }
             return;
         }
 
@@ -353,7 +393,9 @@ public class SnakeView extends TileView {
             if (mDirection != EAST) {
                 mNextDirection = WEST;
             }
-            myClient.moveLeft();
+            if (remote == false) {
+            	myClient.moveLeft();
+            }
             return;
         }
 
@@ -361,12 +403,19 @@ public class SnakeView extends TileView {
             if (mDirection != WEST) {
                 mNextDirection = EAST;
             }
-            myClient.moveRight();
+            if (remote == false) {
+            	myClient.moveRight();
+            }
             return;
         }
 
     }
 
+
+	public void advance() {
+		updateNow();
+		invalidate();
+	}
 
     /**
      * Handles the basic update loop, checking to see if we are in the running state, determining if
@@ -388,6 +437,18 @@ public class SnakeView extends TileView {
 
     }
     
+    public void updateNow() {
+        if (mMode == RUNNING) {
+            long now = System.currentTimeMillis();
+            clearTiles();
+            updateWalls();
+            updateSnake();
+            updateApples();
+            mLastMove = now;
+        }
+
+    }
+    
 	private void printGame() {
 		Debug.print("Printing Snake", debug);
 		for (Coordinate currentCoord : mSnakeTrail) {
@@ -402,6 +463,8 @@ public class SnakeView extends TileView {
 		Debug.print("Direction: " + mNextDirection, debug);
 		Debug.print("Delay: " + mMoveDelay, debug);
 		Debug.print("Score: " + mScore, debug);
+		Debug.print("Width: " + width, debug);
+		Debug.print("Height: " + height, debug);
 	}
 	
     private void initSnakeView(Context context) {
@@ -432,7 +495,7 @@ public class SnakeView extends TileView {
         	Debug.print("Obtaining game from peer", debug);
         	String myLeader = myClient.getPeerNode().askForLeader();
         	if (myLeader != null && myLeader.equals(myClient.getPeerNode().getPeerId()) == false) {
-	        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader);
+	        	Layout myLayout = myClient.getPeerNode().askForLayout(myLeader, getMyWidth(), getMyHeight());
 	        	for (Coordinate coordinate : myLayout.snake) {
 	        		mSnakeTrail.add(coordinate);
 	        	}
@@ -590,7 +653,7 @@ public class SnakeView extends TileView {
                 addRandomApple();
 
                 mScore++;
-                mMoveDelay *= 0.9;
+                //mMoveDelay *= 0.9;
 
                 growSnake = true;
             }
@@ -652,6 +715,7 @@ public class SnakeView extends TileView {
         }
         return coordArrayList;
     }
+
 
 
 }
